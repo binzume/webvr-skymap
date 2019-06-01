@@ -5,7 +5,8 @@ AFRAME.registerComponent('stars', {
 		source: { type: 'string', default: "/vr/hip_stars.json" },
 		lat: { type: 'number', default: 35 },
 		lng: { type: 'number', default: 140.0 },
-		time: { type: 'number', default: 0 }
+		update: { type: 'boolean', default: true },
+		timeOffset: { type: 'number', default: 0 }
 	},
 	init: function () {
 
@@ -57,6 +58,10 @@ void main() {
 		}
 		var starMaterial = new THREE.ShaderMaterial(starMaterialParams);
 		starMaterial.uniforms.size.value = 3;
+		var t = 0;
+		if (this.data.update) {
+			this.intervalId = setInterval(() => {t += 0.001; this.el.setAttribute("stars", {timeOffset: t})}, 100);
+		}
 
 		getJson(this.data.source, (result) => {
 			if (result) {
@@ -71,7 +76,7 @@ void main() {
 				for (let i = 0; i < result.length; i++) {
 					var star = result[i];
 		
-					let v = new THREE.Vector3(0,0,100);
+					let v = new THREE.Vector3(0,0,1000);
 					v.applyAxisAngle( axisX, -star.dec );
 					v.applyAxisAngle( axisY, star.ra );
 
@@ -82,12 +87,16 @@ void main() {
 					geometry.colors.push(color);
 				}
 				let points = new THREE.Points(geometry, starMaterial);
-				this.el.setObject3D('mesh', points);		
+				this.el.setObject3D('mesh', points);
 			}
 		});
 	},
 	update: function() {
-		this.el.object3D.rotation.set( THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(this.data.lng + this.data.time), 0, 'YXZ' );
+		let time = new Date().getTime();
+		let op = 365.242194;
+		let d = (time / 1000 / 86400 - 80) % op;
+		let t = 360 * (d / op + this.data.timeOffset);
+		this.el.object3D.rotation.set( THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(this.data.lng + t), 0, 'XYZ' );
 	},
 	remove: function () {
 	}
