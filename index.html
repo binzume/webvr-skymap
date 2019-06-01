@@ -20,8 +20,8 @@
 
     <a-entity id="camerapos" position="0 0 0">
       <a-camera wasd-controls-enabled look-controls="enabled:false"></a-camera>
-      <a-entity laser-controls="hand: right" raycaster="objects:.clickable"></a-entity>
-      <a-entity laser-controls="hand: left" raycaster="objects:.clickable"></a-entity>
+      <a-entity laser-controls="hand: right" raycaster="objects:.clickable,a-rounded"></a-entity>
+      <a-entity laser-controls="hand: left" raycaster="objects:.clickable,a-rounded"></a-entity>
       <a-entity position="0 0 0" stars="source:hip_stars.json"></a-entity>
       <a-plane id="ground" material="shader:gridground" rotation="-90 0 0" position="0 -1 0" width="1000" height="1000" color="#ddffee"></a-plane>
     </a-entity>

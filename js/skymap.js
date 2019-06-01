@@ -95,7 +95,7 @@ void main() {
 		let time = new Date().getTime();
 		let op = 365.242194;
 		let d = (time / 1000 / 86400 - 80) % op;
-		let t = 360 * (d / op + this.data.timeOffset);
+		let t = -360 * (d / op + this.data.timeOffset);
 		this.el.object3D.rotation.set( THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(this.data.lng + t), 0, 'XYZ' );
 	},
 	remove: function () {
