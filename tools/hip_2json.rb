@@ -3,7 +3,7 @@
 # http://astronomy.webcrow.jp/hip/
 require 'json'
 
-open("hip_lite_major.txt").read.lines.each_with_index{|line,i|
+open(ARGV[0] || "hip_lite_major.txt").read.lines.each_with_index{|line,i|
     row = line.chomp.split(',')
     hipId = row[0].to_i
     ra = (360.0 / 24.0) * (row[1].to_f + row[2].to_f / 60.0 + row[3].to_f / 3600.0) * Math::PI / 180.0;
