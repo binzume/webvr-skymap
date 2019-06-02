@@ -117,7 +117,7 @@ void main() {
 
 AFRAME.registerShader('gridground', {
 	schema: {
-		color: { type: 'color', is: 'uniform', default: "#ffff00"},
+		color: { type: 'color', is: 'uniform', default: "#ffff00" },
 		height: { default: 256 },
 		offset: { type: 'vec2', default: { x: 0, y: 0 } },
 		repeat: { type: 'vec2', default: { x: 1, y: 1 } },
@@ -134,7 +134,7 @@ AFRAME.registerShader('gridground', {
 			vertexShader: this.vertexShader,
 			fragmentShader: this.fragmentShader,
 			fog: true,
-			transparent:true,
+			transparent: true,
 			blending: THREE.AdditiveBlending
 		});
 	},
@@ -238,39 +238,26 @@ AFRAME.registerComponent('config-dialog', {
 	}
 });
 
-
-function instantiate(id, parent) {
-	var p = document.createElement('a-entity');
-	p.innerHTML = document.querySelector('#' + id).innerHTML;
-	var el = p.firstElementChild;
-	(parent || document.querySelector("a-scene")).appendChild(el);
-	return el;
-}
-
 window.addEventListener('DOMContentLoaded', (function (e) {
 
 	document.addEventListener('keydown', (function (e) {
+		var camerEl = document.querySelector('#camerapos');
+		var rotSpeed = 0.1;
 		switch (e.code) {
-			case "KeyW":
-				document.querySelector('a-camera').object3D.rotateX(-0.1);
-				break;
-			case "KeyS":
-				document.querySelector('a-camera').object3D.rotateX(0.1);
-				break;
 			case "ArrowRight":
-				if (mediaPlayer) {
-					mediaPlayer.movePos(1);
-				}
+				camerEl.object3D.rotateY(-rotSpeed);
 				break;
 			case "ArrowLeft":
-				if (mediaPlayer) {
-					mediaPlayer.movePos(-1);
-				}
+				camerEl.object3D.rotateY(rotSpeed);
+				break;
+			case "ArrowDown":
+				camerEl.object3D.rotateX(-rotSpeed);
+				break;
+			case "ArrowUp":
+				camerEl.object3D.rotateX(rotSpeed);
 				break;
 			case "Space":
-				if (mediaPlayer) {
-					mediaPlayer.togglePause();
-				}
+				camerEl.setAttribute("rotation", { x: 0, y: 0, z: 0 });
 				break;
 		}
 	}));

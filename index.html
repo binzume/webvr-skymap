@@ -13,18 +13,19 @@
   <script src="js/skymap.js?1"></script>
 </head>
 
-<body>
+<body style="background-color: black; color:white;">
   <a-scene fog="type: linear; color: #000; near:10;far:50;" cursor="rayOrigin: mouse; fuse:false" raycaster="objects:.clickable,a-rounded"
     renderer="antialias:true;">
     <a-sky></a-sky>
+    <a-entity position="0 0 0" stars="source:hip_stars.json;updateIntervalMs:100;speed:100"></a-entity>
 
-    <a-entity id="camerapos" position="0 0 0">
+    <a-entity id="camerapos" position="0 1.5 0">
       <a-camera wasd-controls-enabled look-controls="enabled:false"></a-camera>
       <a-entity laser-controls="hand: right" raycaster="objects:.clickable,a-rounded"></a-entity>
       <a-entity laser-controls="hand: left" raycaster="objects:.clickable,a-rounded"></a-entity>
-      <a-entity position="0 0 0" stars="source:hip_stars.json;updateIntervalMs:100;speed:100"></a-entity>
-      <a-plane id="ground" material="shader:gridground" rotation="-90 0 0" position="0 -1 0" width="1000" height="1000" color="#111188"></a-plane>
     </a-entity>
+
+    <a-plane id="ground" material="shader:gridground" rotation="-90 0 0" position="0 0 0" width="1000" height="1000" color="#111188"></a-plane>
 
     <!-- menu pane -->
     <a-xywindow main-menu position="0 5 -8" title="menu" width="3.5" height="0.6" layoutmode="horizontal" >
@@ -44,7 +45,7 @@
     </a-xywindow>
 
     <!-- kbd -->
-    <a-entity position="-1.5 -0.5 -2">
+    <a-entity position="-1.5 1.0 -2">
       <a-keyboard physical-keyboard="true"></a-keyboard>
     </a-entity>
   </a-scene>
