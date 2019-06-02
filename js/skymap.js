@@ -106,7 +106,7 @@ void main() {
 
 		let time = this.data.timeMs;
 		let op = 365.242194;
-		let d = (time / 1000 / 86400 - 80) % op; // 80: Spring equinox in 1970
+		let d = (time / 1000 / 86400 - 79) % op; // 79: Spring equinox in 1970
 		let t = time % 86400000 / 86400000.0;
 		let deg = -360 * (d / op + t) - this.data.lng;
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(deg), 0, 'XYZ');
