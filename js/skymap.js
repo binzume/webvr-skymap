@@ -2,11 +2,13 @@
 
 AFRAME.registerComponent('stars', {
 	schema: {
-		source: { type: 'string', default: "/vr/hip_stars.json" },
+		source: { type: 'string', default: "hip_stars.json" },
 		lat: { type: 'number', default: 35 },
 		lng: { type: 'number', default: 140.0 },
-		update: { type: 'boolean', default: true },
-		timeOffset: { type: 'number', default: 0 }
+		realtime: { type: 'boolean', default: true },
+		timeMs: { type: 'number', default: 0 },
+		updateIntervalMs: { type: 'number', default: -1 },
+		speed: { type: 'number', default: 1 }
 	},
 	init: function () {
 
@@ -54,34 +56,35 @@ void main() {
 	#include <encodings_fragment>
 }`,
 			vertexColors: THREE.VertexColors,
-			depthWrite: false
+			depthWrite: false,
+			blending: THREE.AdditiveBlending
 		}
 		var starMaterial = new THREE.ShaderMaterial(starMaterialParams);
 		starMaterial.uniforms.size.value = 3;
-		var t = 0;
-		if (this.data.update) {
-			this.intervalId = setInterval(() => {t += 0.001; this.el.setAttribute("stars", {timeOffset: t})}, 100);
+		if (this.data.realtime) {
+			this.el.setAttribute("stars", { timeMs: Date.now() });
 		}
+		this.currentSpeed = 0;
 
 		getJson(this.data.source, (result) => {
 			if (result) {
 				for (let i = 0; i < 24; i++) {
-					result.push({dec: 0, ra:Math.PI * 2 * i /24, mag:2, color: new THREE.Color(1,0,0)});
+					result.push({ dec: 0, ra: Math.PI * 2 * i / 24, mag: 2, color: new THREE.Color(1, 0, 0) });
 				}
 				// result.push({dec: Math.PI/2, ra:0, mag:0, color: new THREE.Color(0,1,0)}); // Polaris
 
 				let geometry = new THREE.Geometry();
-				let axisY = new THREE.Vector3( 0, 1, 0 );
-				let axisX = new THREE.Vector3( 1, 0, 0 );
+				let axisY = new THREE.Vector3(0, 1, 0);
+				let axisX = new THREE.Vector3(1, 0, 0);
 				for (let i = 0; i < result.length; i++) {
 					var star = result[i];
-		
-					let v = new THREE.Vector3(0,0,1000);
-					v.applyAxisAngle( axisX, -star.dec );
-					v.applyAxisAngle( axisY, star.ra );
 
-					let b = Math.pow(0.5, star.mag);
-					let color = star.color || new THREE.Color(b,b,b);
+					let v = new THREE.Vector3(0, 0, 1000);
+					v.applyAxisAngle(axisX, -star.dec);
+					v.applyAxisAngle(axisY, star.ra);
+
+					let b = Math.max(0.05, Math.pow(0.6, star.mag));
+					let color = star.color || new THREE.Color(b, b, b);
 
 					geometry.vertices.push(v);
 					geometry.colors.push(color);
@@ -91,12 +94,22 @@ void main() {
 			}
 		});
 	},
-	update: function() {
-		let time = new Date().getTime();
+	update: function () {
+		if (this.data.updateIntervalMs > 0 && this.currentSpeed != this.data.speed) {
+			this.currentSpeed = this.data.speed;
+			clearInterval(this.intervalId);
+			let delta = this.data.speed * this.data.updateIntervalMs;
+			this.intervalId = setInterval(() => {
+				this.el.setAttribute("stars", { timeMs: this.data.timeMs + delta, realtime: false })
+			}, this.data.updateIntervalMs);
+		}
+
+		let time = this.data.timeMs;
 		let op = 365.242194;
-		let d = (time / 1000 / 86400 - 80) % op;
-		let t = -360 * (d / op + this.data.timeOffset);
-		this.el.object3D.rotation.set( THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(this.data.lng + t), 0, 'XYZ' );
+		let d = (time / 1000 / 86400 - 80) % op; // 80: Spring equinox in 1970
+		let t = time % 86400000 / 86400000.0;
+		let deg = -360 * (d / op + t) - this.data.lng;
+		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(deg), 0, 'XYZ');
 	},
 	remove: function () {
 	}
@@ -104,7 +117,7 @@ void main() {
 
 AFRAME.registerShader('gridground', {
 	schema: {
-		color: {type: 'vec3', is: 'uniform', default: {x:1, y:1, z:1}},
+		color: { type: 'color', is: 'uniform', default: "#ffff00"},
 		height: { default: 256 },
 		offset: { type: 'vec2', default: { x: 0, y: 0 } },
 		repeat: { type: 'vec2', default: { x: 1, y: 1 } },
@@ -114,18 +127,17 @@ AFRAME.registerShader('gridground', {
 		wireframeLinewidth: { default: 2 }
 	},
 	init: function (data) {
-    this.attributes = this.initVariables(data, 'attribute');
-    this.uniforms = THREE.UniformsUtils.merge([this.initVariables(data, 'uniform'), THREE.UniformsLib.fog]);
-    this.material = new (this.raw ? THREE.RawShaderMaterial : THREE.ShaderMaterial)({
-      // attributes: this.attributes,
-      uniforms: this.uniforms,
-      vertexShader: this.vertexShader,
+		this.attributes = this.initVariables(data, 'attribute');
+		this.uniforms = THREE.UniformsUtils.merge([this.initVariables(data, 'uniform'), THREE.UniformsLib.fog]);
+		this.material = new (this.raw ? THREE.RawShaderMaterial : THREE.ShaderMaterial)({
+			uniforms: this.uniforms,
+			vertexShader: this.vertexShader,
 			fragmentShader: this.fragmentShader,
-			fog: true
-	});
-	this.material.uniforms.color.value = [0,0,1];
-    return this.material;
-  },
+			fog: true,
+			transparent:true,
+			blending: THREE.AdditiveBlending
+		});
+	},
 	vertexShader: `
 	varying vec2 vUv;
 	#include <common>
@@ -153,14 +165,14 @@ AFRAME.registerShader('gridground', {
 	#include <clipping_planes_pars_fragment>
 	void main() {
 		#include <clipping_planes_fragment>
-		vec4 diffuseColor = vec4( diffuse, opacity );
-		#include <color_fragment>
 		vec2 gpos = abs(mod(vUv * 0.2, 1.0) - vec2(0.5,0.5));
-		float l = max(pow(0.5, gpos.x * 150.0), pow(0.5, gpos.y * 150.0)) * pow(0.5, length(gpos) * 20.0);
-		if (l < 0.01) {
+		float l = max(pow(0.5, gpos.x * 150.0), pow(0.5, gpos.y * 150.0)) * pow(0.5, length(gpos) * 40.0);
+		if (l < 0.1) {
 			discard;
 		}
-		gl_FragColor = vec4(color * l, 1.0);
+		vec4 diffuseColor = vec4( color * l, 1.0 );
+		#include <color_fragment>
+		gl_FragColor = diffuseColor;
 		#include <fog_fragment>
 	}`
 });
@@ -175,7 +187,7 @@ AFRAME.registerComponent('main-menu', {
 
 		this.configDialog.setAttribute("visible", false);
 		this.openConfigButton.addEventListener('click', (e) => {
-			this.configDialog.setAttribute("visible", true);
+			this.configDialog.components["config-dialog"].showDialog();
 		});
 	},
 	remove: function () {
@@ -192,14 +204,34 @@ AFRAME.registerComponent('config-dialog', {
 	init: function () {
 		this.latEl = this._getEl('lat');
 		this.lngEl = this._getEl('lng');
+		this.speedEl = this._getEl('speed');
+		this.timeEl = this._getEl('time');
+		this.resetTimeButtonEl = this._getEl('resetTime');
 		this.applyButtonEl = this._getEl('apply');
+		this.targetEl = document.querySelector("[stars]");
 
 		this.applyButtonEl.addEventListener('click', (e) => {
 			this.el.setAttribute("visible", false);
-			document.querySelector("[stars]").setAttribute("stars", {lat: this.latEl.value*1.0, lng: this.lngEl.value * 1.0});
+			this.targetEl.setAttribute("stars", {
+				lat: this.latEl.value * 1.0, lng: this.lngEl.value * 1.0,
+				timeMs: this.timeEl.value * 1.0, speed: this.speedEl.value * 1.0
+			});
+		});
+		this.resetTimeButtonEl.addEventListener('click', (e) => {
+			this.timeEl.value = Date.now();
+			this.targetEl.setAttribute("stars", {
+				timeMs: this.timeEl.value * 1.0, speed: this.speedEl.value * 1.0
+			});
 		});
 	},
 	remove: function () {
+	},
+	showDialog: function () {
+		this.latEl.value = this.targetEl.components.stars.data.lat;
+		this.lngEl.value = this.targetEl.components.stars.data.lng;
+		this.speedEl.value = this.targetEl.components.stars.data.speed;
+		this.timeEl.value = this.targetEl.components.stars.data.timeMs;
+		this.el.setAttribute("visible", true);
 	},
 	_getEl(name) {
 		return this.el.querySelector("[name=" + name + "]");
