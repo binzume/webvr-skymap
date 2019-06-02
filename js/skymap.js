@@ -184,10 +184,14 @@ AFRAME.registerComponent('main-menu', {
 	init: function () {
 		this.configDialog = this._getEl('configDialog');
 		this.openConfigButton = this._getEl('openConfigButton');
+		this.exitVRButton = this._getEl('exitVRButton');
 
 		this.configDialog.setAttribute("visible", false);
 		this.openConfigButton.addEventListener('click', (e) => {
 			this.configDialog.components["config-dialog"].showDialog();
+		});
+		this.exitVRButton.addEventListener('click', (e) => {
+			document.querySelector('a-scene').exitVR();
 		});
 	},
 	remove: function () {
