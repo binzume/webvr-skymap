@@ -6,17 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>WebVR SkyMap</title>
   <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@v0.9.2/dist/aframe-master.min.js"></script>
-  <script src="https://binzume.github.io/aframe-xylayout/aframe-xylayout.js?0"></script>
-  <script src="https://binzume.github.io/aframe-xylayout/aframe-window.js?0"></script>
+  <script src="https://binzume.github.io/aframe-xylayout/aframe-xylayout.js?1"></script>
+  <script src="https://binzume.github.io/aframe-xylayout/aframe-window.js?1"></script>
   <script src="js/aframe-material.js"></script>
   <script src="js/utils.js"></script>
-  <script src="js/skymap.js?1"></script>
+  <script src="js/skymap.js?2"></script>
 </head>
 
 <body style="background-color: black; color:white;">
-  <a-scene fog="type: linear; color: #000; near:10;far:50;" cursor="rayOrigin: mouse; fuse:false" raycaster="objects:.clickable,a-rounded"
+  <a-scene fog="type: linear; color: #000; near:10;far:50;" cursor="rayOrigin: mouse; fuse:false" raycaster="objects:.clickable,a-rounded;far:5500"
     renderer="antialias:true;">
-    <a-sky></a-sky>
+    <a-sky sky-click></a-sky>
     <a-entity position="0 0 0" stars="source:hip_stars.json;updateIntervalMs:100;speed:100"></a-entity>
 
     <a-entity id="camerapos" position="0 1.5 0">
@@ -28,19 +28,29 @@
     <a-plane id="ground" material="shader:gridground" rotation="-90 0 0" position="0 0 0" width="1000" height="1000" color="#111188"></a-plane>
 
     <!-- menu pane -->
-    <a-xywindow main-menu position="0 5 -8" title="menu" width="3.5" height="0.6" layoutmode="horizontal" >
+    <a-xywindow main-menu position="0 5 -8" title="Menu" width="3.5" height="0.6" layoutmode="horizontal" >
       <a-xybutton name="openConfigButton" label="Config" width="1" height="0.6"></a-xybutton>
       <a-xybutton name="exitVRButton" label="Exit VR" width="1" height="0.6"></a-xybutton>
-      <a-rounded visible="false" config-dialog name="configDialog" position="0 -3 0" width="2.5" height="3" radius="0.05">
-          <a-xylayout position="0.2 1 0.05" width=2 height=1>
-            <a-input name="lat" value="35" placeholder="Latitude" color="black" width="1" xyrect="height:0.3" scale="2.5 2.5 2.5"></a-input>
-            <a-input name="lng" value="140" placeholder="Longitude" color="black" width="1" xyrect="height:0.3" scale="2.5 2.5 2.5"></a-input>
-            <a-input name="speed" value="1" placeholder="Speed" color="black" width="1" xyrect="height:0.3" scale="2.5 2.5 2.5"></a-input>
-            <a-xylayout width="3" height="0.6" layoutmode="horizontal">
-                <a-input name="time" value="" placeholder="UnixMilliSec" color="black" width="0.8" position="0 -1 0" xyrect="height:0.3;width:1;pivotY:-0.5" scale="2.5 2.5 2.5"></a-input>
-                <a-xybutton name="resetTime" label="Now" width="0.8" height="0.5" position="2.5 0 0"></a-xybutton>
+      <a-rounded visible="false" config-dialog id="configDialog" position="0 -4 0" width="3.5" height="4" color="#cccccc" radius="0.05">
+          <a-xylayout position="0.5 2 0.05" width=2 height=1 spacing="0.2">
+            <a-xylayout xyrect="pivotY:0.5" width="3" height="0.3" position="1.5 0 0" layoutmode="horizontal">
+              <a-entity xyrect="" width="0.4" height="0.3" text="wrapCount:8;color:black;value: Lat:"></a-entity>
+              <a-input name="lat" value="35" placeholder="Latitude" color="black" width="0.5" xyrect="height:0.1" scale="2.5 2.5 2.5"></a-input>
             </a-xylayout>
-            <a-xybutton name="apply" label="Apply" width="1" height="0.5" position="1.5 0 0"></a-xybutton>
+            <a-xylayout xyrect="pivotY:0.5" width="3" height="0.3" position="1.5 0 0" layoutmode="horizontal">
+              <a-entity xyrect="" width="0.4" height="0.3" text="wrapCount:8;color:black;value: Lng:"></a-entity>
+              <a-input name="lng" value="140" placeholder="Longitude" color="black" width="0.5" xyrect="height:0.1" scale="2.5 2.5 2.5"></a-input>
+            </a-xylayout>
+            <a-xylayout xyrect="pivotY:0.5" width="3" height="0.3" position="1.5 0 0" layoutmode="horizontal">
+              <a-entity xyrect="" width="0.4" height="0.3" text="wrapCount:8;color:black;value: Speed:"></a-entity>
+              <a-input name="speed" value="1" placeholder="x Speed" color="black" width="0.5" xyrect="height:0.1" scale="2.5 2.5 2.5"></a-input>
+            </a-xylayout>
+            <a-entity xyrect="" position="1 0 0" width="2" height="0.3" text="wrapCount:18;width:2;color:black;value:Date(Y/M/D h:m:s)"></a-entity>
+            <a-xylayout xyrect="pivotY:0.5"  width="3" height="0.3" position="1.5 0 0" layoutmode="horizontal">
+                <a-input name="time" value="" placeholder="Date" color="black" width="0.8" height="0.1" xyrect="" scale="2.5 2.5 2.5"></a-input>
+                <a-xybutton name="resetTime" label="Now" width="0.6" height="0.4" ></a-xybutton>
+            </a-xylayout>
+            <a-xybutton name="apply" label="OK" width="1" height="0.4" position="2 -2 0"></a-xybutton>
           </a-xylayout>
         </a-rounded>
     </a-xywindow>

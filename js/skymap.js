@@ -182,16 +182,19 @@ AFRAME.registerComponent('main-menu', {
 	schema: {
 	},
 	init: function () {
-		this.configDialog = this._getEl('configDialog');
-		this.openConfigButton = this._getEl('openConfigButton');
-		this.exitVRButton = this._getEl('exitVRButton');
+		let configDialog = document.querySelector("#configDialog");
 
-		this.configDialog.setAttribute("visible", false);
-		this.openConfigButton.addEventListener('click', (e) => {
-			this.configDialog.components["config-dialog"].showDialog();
+		configDialog.setAttribute("visible", false);
+		this._getEl('openConfigButton').addEventListener('click', (e) => {
+			configDialog.components["config-dialog"].showDialog();
 		});
-		this.exitVRButton.addEventListener('click', (e) => {
+		this._getEl('exitVRButton').addEventListener('click', (e) => {
 			document.querySelector('a-scene').exitVR();
+		});
+		let w = XYWindow.currentWindow(this.el);
+		w.el.setAttribute("xywindow", {closable: false});
+		w.closeButton.addEventListener('click', (e) => {
+			this.el.setAttribute("visible", false);
 		});
 	},
 	remove: function () {
@@ -201,6 +204,16 @@ AFRAME.registerComponent('main-menu', {
 	}
 });
 
+AFRAME.registerComponent('sky-click', {
+	schema: {
+	},
+	init: function () {
+		this.el.classList.add("clickable");
+		this.el.addEventListener('click', (e) => {
+			document.querySelector("[main-menu]").setAttribute("visible", true);
+		});
+	}
+});
 
 AFRAME.registerComponent('config-dialog', {
 	schema: {
@@ -216,16 +229,18 @@ AFRAME.registerComponent('config-dialog', {
 
 		this.applyButtonEl.addEventListener('click', (e) => {
 			this.el.setAttribute("visible", false);
+			let tt = this.timeEl.value.split(/[: /-]+/).map(a => a * 1);
+			let t = new Date(tt[0], tt[1] -1, tt[2], tt[3] || 0, tt[4] || 0, tt[5] || 0);
 			this.targetEl.setAttribute("stars", {
 				lat: this.latEl.value * 1.0, lng: this.lngEl.value * 1.0,
-				timeMs: this.timeEl.value * 1.0, speed: this.speedEl.value * 1.0
+				timeMs: t.getTime(), speed: this.speedEl.value * 1.0
 			});
 		});
 		this.resetTimeButtonEl.addEventListener('click', (e) => {
-			this.timeEl.value = Date.now();
 			this.targetEl.setAttribute("stars", {
-				timeMs: this.timeEl.value * 1.0, speed: this.speedEl.value * 1.0
+				timeMs: Date.now(), speed: this.speedEl.value * 1.0
 			});
+			this.showDialog(); // update
 		});
 	},
 	remove: function () {
@@ -234,7 +249,8 @@ AFRAME.registerComponent('config-dialog', {
 		this.latEl.value = this.targetEl.components.stars.data.lat;
 		this.lngEl.value = this.targetEl.components.stars.data.lng;
 		this.speedEl.value = this.targetEl.components.stars.data.speed;
-		this.timeEl.value = this.targetEl.components.stars.data.timeMs;
+		let t = new Date(this.targetEl.components.stars.data.timeMs);
+		this.timeEl.value = [t.getFullYear(),t.getMonth()+1,t.getDate()].join("/") + " " + [t.getHours(),t.getMinutes(),t.getSeconds()].join(":");
 		this.el.setAttribute("visible", true);
 	},
 	_getEl(name) {
