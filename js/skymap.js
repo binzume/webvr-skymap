@@ -1,5 +1,14 @@
 "use strict";
 
+function instantiate(id, parent) {
+	var p = document.createElement('a-entity');
+	p.innerHTML = document.querySelector('#' + id).innerHTML;
+	var el = p.firstElementChild;
+	(parent || document.querySelector("a-scene")).appendChild(el);
+	p.destroy();
+	return el;
+}
+
 AFRAME.registerComponent('stars', {
 	schema: {
 		source: { type: 'string', default: "hip_stars.json" },
@@ -8,7 +17,10 @@ AFRAME.registerComponent('stars', {
 		realtime: { type: 'boolean', default: true },
 		timeMs: { type: 'number', default: 0 },
 		updateIntervalMs: { type: 'number', default: -1 },
-		speed: { type: 'number', default: 1 }
+		speed: { type: 'number', default: 1 },
+		magFactor: { type: 'number', default: 0.6 },
+		magOffset: { type: 'number', default: -0.5 },
+		debug: { type: 'boolean', default: true }
 	},
 	init: function () {
 
@@ -67,31 +79,31 @@ void main() {
 		this.currentSpeed = 0;
 
 		getJson(this.data.source, (result) => {
-			if (result) {
+			result = result || [];
+			if (this.data.debug) {
 				for (let i = 0; i < 24; i++) {
-					result.push({ dec: 0, ra: Math.PI * 2 * i / 24, mag: 2, color: new THREE.Color(1, 0, 0) });
+					result.push({ dec: 0, ra: Math.PI * 2 * i / 24, mag: 2, color: new THREE.Color(0.8, 0, 0) });
 				}
 				// result.push({dec: Math.PI/2, ra:0, mag:0, color: new THREE.Color(0,1,0)}); // Polaris
-
-				let geometry = new THREE.Geometry();
-				let axisY = new THREE.Vector3(0, 1, 0);
-				let axisX = new THREE.Vector3(1, 0, 0);
-				for (let i = 0; i < result.length; i++) {
-					var star = result[i];
-
-					let v = new THREE.Vector3(0, 0, 1000);
-					v.applyAxisAngle(axisX, -star.dec);
-					v.applyAxisAngle(axisY, star.ra);
-
-					let b = Math.max(0.05, Math.pow(0.6, star.mag));
-					let color = star.color || new THREE.Color(b, b, b);
-
-					geometry.vertices.push(v);
-					geometry.colors.push(color);
-				}
-				let points = new THREE.Points(geometry, starMaterial);
-				this.el.setObject3D('mesh', points);
 			}
+			let geometry = new THREE.Geometry();
+			let axisY = new THREE.Vector3(0, 1, 0);
+			let axisX = new THREE.Vector3(1, 0, 0);
+			for (let i = 0; i < result.length; i++) {
+				var star = result[i];
+
+				let v = new THREE.Vector3(0, 0, 1000);
+				v.applyAxisAngle(axisX, -star.dec);
+				v.applyAxisAngle(axisY, star.ra);
+
+				let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
+				let color = star.color || new THREE.Color(b, b, b);
+
+				geometry.vertices.push(v);
+				geometry.colors.push(color);
+			}
+			let points = new THREE.Points(geometry, starMaterial);
+			this.el.setObject3D('mesh', points);
 		});
 	},
 	update: function () {
@@ -182,19 +194,16 @@ AFRAME.registerComponent('main-menu', {
 	schema: {
 	},
 	init: function () {
-		let configDialog = document.querySelector("#configDialog");
-
-		configDialog.setAttribute("visible", false);
+		this.configDialog = null;
 		this._getEl('openConfigButton').addEventListener('click', (e) => {
-			configDialog.components["config-dialog"].showDialog();
+			if (!this.configDialog) {
+				this.configDialog = instantiate("configDialogTemplate", this.el);
+			} else {
+				this.configDialog.components["config-dialog"].showDialog();
+			}
 		});
 		this._getEl('exitVRButton').addEventListener('click', (e) => {
 			document.querySelector('a-scene').exitVR();
-		});
-		let w = XYWindow.currentWindow(this.el);
-		w.el.setAttribute("xywindow", {closable: false});
-		w.closeButton.addEventListener('click', (e) => {
-			this.el.setAttribute("visible", false);
 		});
 	},
 	remove: function () {
@@ -204,13 +213,13 @@ AFRAME.registerComponent('main-menu', {
 	}
 });
 
-AFRAME.registerComponent('sky-click', {
+AFRAME.registerComponent('menu-on-click', {
 	schema: {
 	},
 	init: function () {
 		this.el.classList.add("clickable");
 		this.el.addEventListener('click', (e) => {
-			document.querySelector("[main-menu]").setAttribute("visible", true);
+			document.querySelector("[main-menu]") || instantiate('mainMenuTemplate');
 		});
 	}
 });
@@ -242,6 +251,7 @@ AFRAME.registerComponent('config-dialog', {
 			});
 			this.showDialog(); // update
 		});
+		this.showDialog();
 	},
 	remove: function () {
 	},
@@ -259,6 +269,7 @@ AFRAME.registerComponent('config-dialog', {
 });
 
 window.addEventListener('DOMContentLoaded', (function (e) {
+	document.querySelector("[main-menu]") || instantiate('mainMenuTemplate');
 
 	document.addEventListener('keydown', (function (e) {
 		var camerEl = document.querySelector('#camerapos');
