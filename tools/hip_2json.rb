@@ -10,6 +10,6 @@ open(ARGV[0] || "hip_lite_major.txt").read.lines.each_with_index{|line,i|
     dec = (row[4].to_i * 2 -1) * (row[5].to_f + row[6].to_f / 60.0 + row[7].to_f / 3600.0)  * Math::PI / 180.0;
     mag = row[8].to_f
     bvcol = 0 # TODO
-    puts (i == 0 ? "[" : ",") + JSON.generate({ra: ra, dec:dec, mag: mag, bvcol: bvcol})
+    puts (i == 0 ? "[" : ",") + JSON.generate({id: hipId, ra: ra, dec:dec, mag: mag, bvcol: bvcol})
 }
 puts "]"
