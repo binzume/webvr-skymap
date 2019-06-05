@@ -20,6 +20,8 @@ AFRAME.registerComponent('stars', {
 		speed: { type: 'number', default: 1 },
 		magFactor: { type: 'number', default: 0.6 },
 		magOffset: { type: 'number', default: -0.5 },
+		constellationSrc: { type: 'string', default: "" },
+		constellation: { type: 'boolean', default: false },
 		debug: { type: 'boolean', default: true }
 	},
 	init: function () {
@@ -89,6 +91,7 @@ void main() {
 			let geometry = new THREE.Geometry();
 			let axisY = new THREE.Vector3(0, 1, 0);
 			let axisX = new THREE.Vector3(1, 0, 0);
+			let pointMap = {};
 			for (let i = 0; i < result.length; i++) {
 				var star = result[i];
 
@@ -99,11 +102,18 @@ void main() {
 				let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
 				let color = star.color || new THREE.Color(b, b, b);
 
+				if (star.id != null) pointMap[star.id] = geometry.vertices.length;
 				geometry.vertices.push(v);
 				geometry.colors.push(color);
 			}
 			let points = new THREE.Points(geometry, starMaterial);
 			this.el.setObject3D('mesh', points);
+
+			if (this.data.constellationSrc != ""){
+				getJson(this.data.constellationSrc, (constellations) => {
+					if (constellations) this._makeCLines(points, pointMap, constellations);
+				});
+			}
 		});
 	},
 	update: function () {
@@ -122,8 +132,29 @@ void main() {
 		let t = time % 86400000 / 86400000.0;
 		let deg = -360 * (d / op + t) - this.data.lng;
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(deg), 0, 'XYZ');
+		if (this.constellations) {
+			this.constellations.visible = this.data.constellation;
+		}
 	},
 	remove: function () {
+	},
+	_makeCLines: function(points, pointMap, constellations) {
+		var material = new THREE.LineBasicMaterial({
+			color: 0x002244,
+			fog: false
+		});		
+		var geometry = new THREE.Geometry();
+		constellations.forEach(c => {
+			if (!c.lines.every(p => pointMap[p] != null) || c.lines.length%2 != 0) {
+				console.log("star not found:", c);
+				return;
+			}
+			c.lines.forEach(p => geometry.vertices.push(points.geometry.vertices[pointMap[p]]));
+		});
+		let line = new THREE.LineSegments( geometry, material );
+		this.el.object3D.add( line );
+		this.constellations = line;
+		this.constellations.visible = this.data.constellation;
 	}
 });
 
@@ -239,7 +270,7 @@ AFRAME.registerComponent('config-dialog', {
 		this.applyButtonEl.addEventListener('click', (e) => {
 			this.el.setAttribute("visible", false);
 			let tt = this.timeEl.value.split(/[: /-]+/).map(a => a * 1);
-			let t = new Date(tt[0], tt[1] -1, tt[2], tt[3] || 0, tt[4] || 0, tt[5] || 0);
+			let t = new Date(tt[0], tt[1] - 1, tt[2], tt[3] || 0, tt[4] || 0, tt[5] || 0);
 			this.targetEl.setAttribute("stars", {
 				lat: this.latEl.value * 1.0, lng: this.lngEl.value * 1.0,
 				timeMs: t.getTime(), speed: this.speedEl.value * 1.0
@@ -251,6 +282,10 @@ AFRAME.registerComponent('config-dialog', {
 			});
 			this.showDialog(); // update
 		});
+		this._getEl('constellations').addEventListener('click', (e) => {
+			this.targetEl.setAttribute("stars", "constellation", !this.targetEl.getAttribute("stars").constellation);
+			this.showDialog(); // update
+		});
 		this.showDialog();
 	},
 	remove: function () {
@@ -260,7 +295,7 @@ AFRAME.registerComponent('config-dialog', {
 		this.lngEl.value = this.targetEl.components.stars.data.lng;
 		this.speedEl.value = this.targetEl.components.stars.data.speed;
 		let t = new Date(this.targetEl.components.stars.data.timeMs);
-		this.timeEl.value = [t.getFullYear(),t.getMonth()+1,t.getDate()].join("/") + " " + [t.getHours(),t.getMinutes(),t.getSeconds()].join(":");
+		this.timeEl.value = [t.getFullYear(), t.getMonth() + 1, t.getDate()].join("/") + " " + [t.getHours(), t.getMinutes(), t.getSeconds()].join(":");
 		this.el.setAttribute("visible", true);
 	},
 	_getEl(name) {
