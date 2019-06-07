@@ -10,13 +10,13 @@
   <script src="https://binzume.github.io/aframe-xylayout/aframe-window.js?2"></script>
   <script src="js/aframe-material.js"></script>
   <script src="js/utils.js"></script>
-  <script src="js/skymap.js?5"></script>
+  <script src="js/skymap.js?6"></script>
 </head>
 
 <body style="background-color: black; color:white;">
   <a-scene fog="type: linear; color: #000; near:10;far:50;" cursor="rayOrigin: mouse; fuse:false" raycaster="objects:.clickable,a-rounded;far:Infinity"
     renderer="antialias:true;">
-    <a-sky menu-on-click="template:mainMenuTemplate;offsetY:2"></a-sky>
+    <a-sky menu-on-click="template:mainMenuTemplate;offsetY:-1"></a-sky>
 
     <a-assets>
       <!-- menu pane -->
@@ -32,20 +32,22 @@
           <a-entity class="xy-ignorelayout" position="0 0 -0.05" geometry="primitive:xy-rounded-rect;width:3.5;height:4" material="color:#444"></a-entity>
           <a-xylayout width="3" height="0.5" layoutmode="horizontal">
             <a-text width="0.8" height="0.3" anchor="center" wrap-count=6 value="Lat:"></a-text>
-            <a-input xyrect name="lat" value="35" placeholder="Latitude" width="0.5" height="0.1" scale="2.5 2.5 2.5"></a-input>
+            <a-input xyrect name="lat" value="35" placeholder="Latitude" width="0.4" height="0.1" scale="2.5 2.5 2.5"></a-input>
           </a-xylayout>
           <a-xylayout width="3" height="0.5" layoutmode="horizontal">
             <a-text width="0.8" height="0.3" anchor="center" wrap-count=6 value="Lng:"></a-text>
-            <a-input xyrect name="lng" value="140" placeholder="Longitude" width="0.5" height="0.1" scale="2.5 2.5 2.5"></a-input>
+            <a-input xyrect name="lng" value="140" placeholder="Longitude" width="0.4" height="0.1" scale="2.5 2.5 2.5"></a-input>
           </a-xylayout>
           <a-xylayout width="3" height="0.5" layoutmode="horizontal">
             <a-text width="0.8" height="0.3" anchor="center" wrap-count=6 value="Speed:"></a-text>
-            <a-input xyrect name="speed" value="1" placeholder="x Speed" width="0.5" height="0.1" scale="2.5 2.5 2.5"></a-input>
+            <a-input xyrect name="speed" value="1" placeholder="x Speed" width="0.4" height="0.1" scale="2.5 2.5 2.5"></a-input>
+            <a-xybutton name="speed-x1" label="x1" width="0.6" height="0.4"></a-xybutton>
+            <a-xybutton name="speed-x100" label="x100" width="0.6" height="0.4"></a-xybutton>
           </a-xylayout>
           <a-text width="3" height="0.5" anchor="center" wrap-count=24 value="Date(Y/M/D h:m:s)"></a-text>
           <a-xylayout width="3" height="0.5" layoutmode="horizontal">
               <a-input xyrect name="time" value="" placeholder="Date" width="0.7" height="0.1" scale="2.5 2.5 2.5"></a-input>
-              <a-xybutton name="resetTime" label="Now" width="0.6" height="0.4" ></a-xybutton>
+              <a-xybutton name="resetTime" label="Now" width="0.6" height="0.4"></a-xybutton>
           </a-xylayout>
           <a-xybutton name="constellations" label="Constellations On/Off" width="2.5" height="0.4"></a-xybutton>
           <a-xybutton name="apply" label="OK" width="1" height="0.4" position="0.7 0 0"></a-xybutton>

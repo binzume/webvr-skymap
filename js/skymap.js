@@ -109,7 +109,7 @@ void main() {
 			let points = new THREE.Points(geometry, starMaterial);
 			this.el.setObject3D('mesh', points);
 
-			if (this.data.constellationSrc != ""){
+			if (this.data.constellationSrc != "") {
 				getJson(this.data.constellationSrc, (constellations) => {
 					if (constellations) this._makeCLines(points, pointMap, constellations);
 				});
@@ -138,21 +138,21 @@ void main() {
 	},
 	remove: function () {
 	},
-	_makeCLines: function(points, pointMap, constellations) {
+	_makeCLines: function (points, pointMap, constellations) {
 		var material = new THREE.LineBasicMaterial({
 			color: 0x002244,
 			fog: false
-		});		
+		});
 		var geometry = new THREE.Geometry();
 		constellations.forEach(c => {
-			if (!c.lines.every(p => pointMap[p] != null) || c.lines.length%2 != 0) {
+			if (!c.lines.every(p => pointMap[p] != null) || c.lines.length % 2 != 0) {
 				console.log("star not found:", c);
 				return;
 			}
 			c.lines.forEach(p => geometry.vertices.push(points.geometry.vertices[pointMap[p]]));
 		});
-		let line = new THREE.LineSegments( geometry, material );
-		this.el.object3D.add( line );
+		let line = new THREE.LineSegments(geometry, material);
+		this.el.object3D.add(line);
 		this.constellations = line;
 		this.constellations.visible = this.data.constellation;
 	}
@@ -246,12 +246,28 @@ AFRAME.registerComponent('main-menu', {
 
 AFRAME.registerComponent('menu-on-click', {
 	schema: {
+        template: { type: 'string', default: "mainMenuTemplate" },
+        distance: { type: 'number', default: 10 },
+        offsetY: { type: 'number', default: 0 },
 	},
 	init: function () {
 		this.el.classList.add("clickable");
-		this.el.addEventListener('click', (e) => {
-			document.querySelector("[main-menu]") || instantiate('mainMenuTemplate');
+		this.el.addEventListener('click', (ev) => {
+			if (document.querySelector("[main-menu]")) {
+				return;
+			}
+			var menuEl = instantiate(this.data.template);
+			if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
+				return;
+			}
+			console.log(ev);
+			var raycaster = ev.detail.cursorEl.components.raycaster.raycaster;
+			var rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
+			menuEl.object3D.quaternion.copy(rot);
+			var d = raycaster.ray.direction.clone().multiplyScalar(this.data.distance);
+			menuEl.setAttribute("position", raycaster.ray.origin.clone().add(d).add(new THREE.Vector3(0, this.data.offsetY, 0)));
 		});
+
 	}
 });
 
@@ -285,6 +301,14 @@ AFRAME.registerComponent('config-dialog', {
 		this._getEl('constellations').addEventListener('click', (e) => {
 			this.targetEl.setAttribute("stars", "constellation", !this.targetEl.getAttribute("stars").constellation);
 			this.showDialog(); // update
+		});
+		this._getEl('speed-x1').addEventListener('click', (e) => {
+			this.speedEl.value = 1;
+			this.targetEl.setAttribute("stars", "speed", this.speedEl.value * 1.0);
+		});
+		this._getEl('speed-x100').addEventListener('click', (e) => {
+			this.speedEl.value = 100;
+			this.targetEl.setAttribute("stars", "speed", this.speedEl.value * 1.0);
 		});
 		this.showDialog();
 	},
