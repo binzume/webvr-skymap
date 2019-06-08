@@ -11,7 +11,7 @@ function instantiate(id, parent) {
 
 AFRAME.registerComponent('stars', {
 	schema: {
-		source: { type: 'string', default: "hip_stars.json" },
+		src: { type: 'string', default: "hip_stars.json" },
 		lat: { type: 'number', default: 35 },
 		lng: { type: 'number', default: 140.0 },
 		realtime: { type: 'boolean', default: true },
@@ -75,19 +75,14 @@ void main() {
 		}
 		var starMaterial = new THREE.ShaderMaterial(starMaterialParams);
 		starMaterial.uniforms.size.value = 3;
+		this.starMaterial = starMaterial;
 		if (this.data.realtime) {
 			this.el.setAttribute("stars", { timeMs: Date.now() });
 		}
 		this.currentSpeed = 0;
 
-		getJson(this.data.source, (result) => {
+		getJson(this.data.src, (result) => {
 			result = result || [];
-			if (this.data.debug) {
-				for (let i = 0; i < 24; i++) {
-					result.push({ dec: 0, ra: Math.PI * 2 * i / 24, mag: 2, color: new THREE.Color(0.8, 0, 0) });
-				}
-				// result.push({dec: Math.PI/2, ra:0, mag:0, color: new THREE.Color(0,1,0)}); // Polaris
-			}
 			let geometry = new THREE.Geometry();
 			let axisY = new THREE.Vector3(0, 1, 0);
 			let axisX = new THREE.Vector3(1, 0, 0);
@@ -114,6 +109,8 @@ void main() {
 					if (constellations) this._makeCLines(points, pointMap, constellations);
 				});
 			}
+			this._makeGrid(48);
+			this._makeSun();
 		});
 	},
 	update: function () {
@@ -135,8 +132,49 @@ void main() {
 		if (this.constellations) {
 			this.constellations.visible = this.data.constellation;
 		}
+		if (this.gridPoints) {
+			this.gridPoints.visible = this.data.constellation;
+		}
+		if (this.sun) {
+			let oe = 84381.406 / 3600 * Math.PI / 180;
+			let axisZ = new THREE.Vector3(0, 0, 1);
+			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
+			let r = d / op * Math.PI * 2;
+			this.sun.setRotationFromAxisAngle(oev, r);
+		}
 	},
 	remove: function () {
+	},
+	_makeGrid: function (d) {
+		let geometry = new THREE.Geometry();
+		let axisY = new THREE.Vector3(0, 1, 0);
+		let axisZ = new THREE.Vector3(0, 0, 1);
+		let oe = 84381.406 / 3600 * Math.PI / 180;
+		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
+		for (let i = 0; i < d; i++) {
+			let v = new THREE.Vector3(0, 0, 1000).applyAxisAngle(axisY, Math.PI * 2 * i / d);
+			geometry.vertices.push(v);
+			geometry.colors.push(new THREE.Color(0.8, 0, 0));
+
+			let ov = new THREE.Vector3(0, 0, 1000).applyAxisAngle(oev, Math.PI * 2 * i / d);
+			geometry.vertices.push(ov);
+			geometry.colors.push(new THREE.Color(0.8, 0.8, 0));
+		}
+		let points = new THREE.Points(geometry, this.starMaterial);
+
+		this.el.object3D.add(points);
+		this.gridPoints = points;
+		this.gridPoints.visible = this.data.constellation;
+	},
+	_makeSun: function (d) {
+		let geometry = new THREE.SphereGeometry( 4.63, 32, 32 );
+		let material = new THREE.MeshBasicMaterial( {color: 0xffffee, fog: false} );
+		let sun = new THREE.Mesh( geometry, material );
+		sun.position.z = 1000;
+		let sunC = new THREE.Object3D();
+		sunC.add(sun);
+		this.el.object3D.add(sunC);
+		this.sun = sunC;
 	},
 	_makeCLines: function (points, pointMap, constellations) {
 		var material = new THREE.LineBasicMaterial({
@@ -236,6 +274,32 @@ AFRAME.registerComponent('main-menu', {
 		this._getEl('exitVRButton').addEventListener('click', (e) => {
 			document.querySelector('a-scene').exitVR();
 		});
+		this._getEl('constellations').addEventListener('click', (e) => {
+			var el = document.querySelector("[stars]");
+			el.setAttribute("stars", "constellation", !el.getAttribute("stars").constellation);
+		});
+		this._getEl('speed-x1').addEventListener('click', (e) => {
+			document.querySelector("[stars]").setAttribute("stars", "speed", 1.0);
+		});
+		this._getEl('speed-x60').addEventListener('click', (e) => {
+			document.querySelector("[stars]").setAttribute("stars", "speed", 60.0);
+		});
+		this._getEl('speed-x300').addEventListener('click', (e) => {
+			document.querySelector("[stars]").setAttribute("stars", "speed", 300.0);
+		});
+		this._getEl('speed-x3600').addEventListener('click', (e) => {
+			document.querySelector("[stars]").setAttribute("stars", "speed", 3600.0);
+		});
+		this._getEl('time-now').addEventListener('click', (e) => {
+			document.querySelector("[stars]").setAttribute("stars", "timeMs", Date.now());
+		});
+		this.timer = setInterval(() => {
+			let t = new Date(document.querySelector("[stars]").getAttribute("stars").timeMs);
+			let d2 = n => ("0" + n).substr(-2);
+			let timeStr = [t.getFullYear(), d2(t.getMonth() + 1), d2(t.getDate())].join("-") + " " +
+				[d2(t.getHours()), d2(t.getMinutes()), d2(t.getSeconds())].join(":");
+			this._getEl('time-text').setAttribute("value", timeStr);
+		}, 1000);
 	},
 	remove: function () {
 	},
@@ -246,9 +310,9 @@ AFRAME.registerComponent('main-menu', {
 
 AFRAME.registerComponent('menu-on-click', {
 	schema: {
-        template: { type: 'string', default: "mainMenuTemplate" },
-        distance: { type: 'number', default: 10 },
-        offsetY: { type: 'number', default: 0 },
+		template: { type: 'string', default: "" },
+		distance: { type: 'number', default: 10 },
+		offsetY: { type: 'number', default: 0 },
 	},
 	init: function () {
 		this.el.classList.add("clickable");
@@ -260,7 +324,6 @@ AFRAME.registerComponent('menu-on-click', {
 			if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
 				return;
 			}
-			console.log(ev);
 			var raycaster = ev.detail.cursorEl.components.raycaster.raycaster;
 			var rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
 			menuEl.object3D.quaternion.copy(rot);
@@ -279,11 +342,9 @@ AFRAME.registerComponent('config-dialog', {
 		this.lngEl = this._getEl('lng');
 		this.speedEl = this._getEl('speed');
 		this.timeEl = this._getEl('time');
-		this.resetTimeButtonEl = this._getEl('resetTime');
-		this.applyButtonEl = this._getEl('apply');
 		this.targetEl = document.querySelector("[stars]");
 
-		this.applyButtonEl.addEventListener('click', (e) => {
+		this._getEl('apply').addEventListener('click', (e) => {
 			this.el.setAttribute("visible", false);
 			let tt = this.timeEl.value.split(/[: /-]+/).map(a => a * 1);
 			let t = new Date(tt[0], tt[1] - 1, tt[2], tt[3] || 0, tt[4] || 0, tt[5] || 0);
@@ -291,24 +352,6 @@ AFRAME.registerComponent('config-dialog', {
 				lat: this.latEl.value * 1.0, lng: this.lngEl.value * 1.0,
 				timeMs: t.getTime(), speed: this.speedEl.value * 1.0
 			});
-		});
-		this.resetTimeButtonEl.addEventListener('click', (e) => {
-			this.targetEl.setAttribute("stars", {
-				timeMs: Date.now(), speed: this.speedEl.value * 1.0
-			});
-			this.showDialog(); // update
-		});
-		this._getEl('constellations').addEventListener('click', (e) => {
-			this.targetEl.setAttribute("stars", "constellation", !this.targetEl.getAttribute("stars").constellation);
-			this.showDialog(); // update
-		});
-		this._getEl('speed-x1').addEventListener('click', (e) => {
-			this.speedEl.value = 1;
-			this.targetEl.setAttribute("stars", "speed", this.speedEl.value * 1.0);
-		});
-		this._getEl('speed-x100').addEventListener('click', (e) => {
-			this.speedEl.value = 100;
-			this.targetEl.setAttribute("stars", "speed", this.speedEl.value * 1.0);
 		});
 		this.showDialog();
 	},
@@ -319,7 +362,9 @@ AFRAME.registerComponent('config-dialog', {
 		this.lngEl.value = this.targetEl.components.stars.data.lng;
 		this.speedEl.value = this.targetEl.components.stars.data.speed;
 		let t = new Date(this.targetEl.components.stars.data.timeMs);
-		this.timeEl.value = [t.getFullYear(), t.getMonth() + 1, t.getDate()].join("/") + " " + [t.getHours(), t.getMinutes(), t.getSeconds()].join(":");
+		let d2 = n => ("0" + n).substr(-2);
+		this.timeEl.value = [t.getFullYear(), d2(t.getMonth() + 1), d2(t.getDate())].join("-") + " " +
+			[d2(t.getHours()), d2(t.getMinutes()), d2(t.getSeconds())].join(":");
 		this.el.setAttribute("visible", true);
 	},
 	_getEl(name) {
@@ -379,6 +424,3 @@ window.addEventListener('DOMContentLoaded', (function (e) {
 	}
 	update();
 }), false);
-
-addEventListener("gamepadconnected", (e) => {
-});
