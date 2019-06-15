@@ -1,5 +1,7 @@
 "use strict";
 
+AFRAME.ASSETS_PATH = "./3rdparty/assets"; // assets for a-frame-material
+
 function instantiate(id, parent) {
 	var p = document.createElement('a-entity');
 	p.innerHTML = document.querySelector('#' + id).innerHTML;
