@@ -98,11 +98,16 @@ void main() {
 				v.applyAxisAngle(axisY, star.ra);
 
 				let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
-				let color = star.color || new THREE.Color(b, b, b);
-
+				let t = 4600 * ((1 / ((0.92 * star.bv) + 1.7)) + (1 / ((0.92 * star.bv) + 0.62)));
+				if (t < 6504) {
+					let bg = t / 6504 * 0.3 + 0.7;
+					geometry.colors.push(new THREE.Color(b, b * bg, b * bg));
+				} else {
+					let rg = 6504 / t * 0.4 + 0.6;
+					geometry.colors.push(new THREE.Color(b * rg, b * rg, b));
+				}
 				if (star.id != null) pointMap[star.id] = geometry.vertices.length;
 				geometry.vertices.push(v);
-				geometry.colors.push(color);
 			}
 			let points = new THREE.Points(geometry, starMaterial);
 			this.el.setObject3D('mesh', points);
@@ -214,7 +219,7 @@ void main() {
 	},
 	_makeMoon: function (d) {
 		let geometry = new THREE.SphereGeometry(19, 32, 32);
-		let material = new THREE.MeshBasicMaterial({ color: 0x666633, fog: false });
+		let material = new THREE.MeshBasicMaterial({ color: 0x555544, fog: false });
 		let moon = new THREE.Mesh(geometry, material);
 		this.el.object3D.add(moon);
 		this.moon = moon;
