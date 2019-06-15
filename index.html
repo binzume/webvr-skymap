@@ -29,7 +29,7 @@
           </a-xylayout>
           <a-xylayout height="0.6" direction="horizontal" justify-items="stretch">
               <a-text name="time-text" width="3" height="0.6" anchor="center" wrap-count="19" value="0000-00-00 00:00:00"></a-text>
-              <a-xybutton name="time-now" label="now" width="0.8" height="0.6"></a-xybutton>
+              <a-xybutton name="time-now" label="Now" width="0.8" height="0.6"></a-xybutton>
           </a-xylayout>
           <a-xylayout height="0.6" direction="horizontal" justify-items="stretch">
               <a-xybutton name="speed-x1" label="x1" width="1" height="0.6"></a-xybutton>
@@ -42,15 +42,16 @@
       <!-- config dialog -->
       <script id="configDialogTemplate" type="text/html">
         <a-xylayout config-dialog position="4 -2 0.05" width=3 height=4 spacing="0.05" padding="0.2">
-          <a-entity class="xy-ignorelayout" position="0 0 -0.05" geometry="primitive:xy-rounded-rect;width:3;height:4" material="color:#444"></a-entity>
+          <a-entity xyitem="fixed:true" position="0 0 -0.05" geometry="primitive:xy-rounded-rect;width:3;height:4" material="color:#444"></a-entity>
           <a-xylayout width="2.5" height="0.5" direction="horizontal">
             <a-text width="0.8" height="0.3" anchor="center" wrap-count=6 value="Lat:"></a-text>
-            <a-input xyrect name="lat" value="35" placeholder="Latitude" width="0.4" height="0.1" scale="2.5 2.5 2.5"></a-input>
+            <a-input xyrect name="lat" value="35" placeholder="Latitude" width="0.6" height="0.1" scale="2.5 2.5 2.5"></a-input>
           </a-xylayout>
           <a-xylayout width="2.5" height="0.5" direction="horizontal">
             <a-text width="0.8" height="0.3" anchor="center" wrap-count=6 value="Lng:"></a-text>
-            <a-input xyrect name="lng" value="140" placeholder="Longitude" width="0.4" height="0.1" scale="2.5 2.5 2.5"></a-input>
+            <a-input xyrect name="lng" value="140" placeholder="Longitude" width="0.6" height="0.1" scale="2.5 2.5 2.5"></a-input>
           </a-xylayout>
+          <a-xybutton name="gps" label="GPS" width="2.5" height="0.4"></a-xybutton>
           <a-xylayout width="2.5" height="0.5" direction="horizontal">
             <a-text width="0.8" height="0.3" anchor="center" wrap-count=6 value="Speed:"></a-text>
             <a-input xyrect name="speed" value="1" placeholder="x Speed" width="0.4" height="0.1" scale="2.5 2.5 2.5"></a-input>
@@ -59,7 +60,7 @@
           <a-xylayout width="2.5" height="0.5" direction="horizontal">
               <a-input xyrect name="time" value="" placeholder="Date" width="1" height="0.1" scale="2.5 2.5 2.5"></a-input>
           </a-xylayout>
-          <a-xybutton name="apply" label="Ok" width="1" height="0.4" position="0.5 0 0"></a-xybutton>
+          <a-xybutton name="apply" label="Ok" width="1" height="0.4" xyitem="align:end"></a-xybutton>
         </a-xylayout>
       </script>
     </a-assets>

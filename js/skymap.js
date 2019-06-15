@@ -63,7 +63,7 @@ void main() {
 	#include <color_fragment>
 	#include <alphatest_fragment>
 	outgoingLight = diffuseColor.rgb;
-	outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0);
+	outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0 - 0.3);
 	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
 	#include <premultiplied_alpha_fragment>
 	#include <tonemapping_fragment>
@@ -80,6 +80,7 @@ void main() {
 			this.el.setAttribute("stars", { timeMs: Date.now() });
 		}
 		this.currentSpeed = 0;
+		this.gridLastUpdated = 0;
 
 		getJson(this.data.src, (result) => {
 			result = result || [];
@@ -90,7 +91,7 @@ void main() {
 			for (let i = 0; i < result.length; i++) {
 				var star = result[i];
 
-				let v = new THREE.Vector3(0, 0, 1000);
+				let v = new THREE.Vector3(0, 0, 4000);
 				v.applyAxisAngle(axisX, -star.dec);
 				v.applyAxisAngle(axisY, star.ra);
 
@@ -109,8 +110,8 @@ void main() {
 					if (constellations) this._makeCLines(points, pointMap, constellations);
 				});
 			}
-			this._makeGrid(48);
 			this._makeSun();
+			this._makeMoon();
 		});
 	},
 	update: function () {
@@ -122,35 +123,56 @@ void main() {
 				this.el.setAttribute("stars", { timeMs: this.data.timeMs + delta, realtime: false })
 			}, this.data.updateIntervalMs);
 		}
+		const op = 365.242194 * 86400; // seconds
+		const oe = 84381.406 / 3600 * Math.PI / 180; // rad
 
-		let time = this.data.timeMs;
-		let op = 365.242194;
-		let d = (time / 1000 / 86400 - 79) % op; // 79: Spring equinox in 1970
-		let t = time % 86400000 / 86400000.0;
-		let deg = -360 * (d / op + t) - this.data.lng;
+		let time = this.data.timeMs / 1000.0;
+		let d = (time - 79 * 86400) % op / op; // from spring equinox (79: Spring equinox in 1970)
+		let deg = -360 * (d + time % 86400 / 86400) - this.data.lng;
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(deg), 0, 'XYZ');
 		if (this.constellations) {
 			this.constellations.visible = this.data.constellation;
+			if (Math.abs(this.gridLastUpdated - this.data.timeMs) > 86400) {
+				this._makeGrid(48);
+			}
 		}
 		if (this.gridPoints) {
 			this.gridPoints.visible = this.data.constellation;
 		}
 		if (this.sun) {
-			let oe = 84381.406 / 3600 * Math.PI / 180;
 			let axisZ = new THREE.Vector3(0, 0, 1);
 			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
-			let r = d / op * Math.PI * 2;
-			this.sun.setRotationFromAxisAngle(oev, r);
+			this.sun.setRotationFromAxisAngle(oev, d * Math.PI * 2);
+		}
+		if (this.moon) {
+			const mop = 2360591.58; // seconds
+			const om = 5.1454 * Math.PI / 180; // rad
+			const aa = -19.3549 * Math.PI / 180; // rad/year
+			let axisY = new THREE.Vector3(0, 1, 0);
+			let axisZ = new THREE.Vector3(0, 0, 1);
+
+			let tt = time - 1174237200; // seconds from 2007/2/19
+			let yy = tt / op;
+			let omvv = new THREE.Vector3(0, 0, 1).applyAxisAngle(axisY, aa * yy);
+			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(omvv, om).applyAxisAngle(axisZ, oe);
+			let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(2000.0);
+			this.moon.position.copy(st.applyAxisAngle(omv, (tt % mop) / mop * 2 * Math.PI));
 		}
 	},
 	remove: function () {
 	},
 	_makeGrid: function (d) {
+		if (this.gridPoints) {
+			this.el.object3D.remove(this.gridPoints);
+		}
+		this.gridLastUpdated = this.data.timeMs;
 		let geometry = new THREE.Geometry();
 		let axisY = new THREE.Vector3(0, 1, 0);
 		let axisZ = new THREE.Vector3(0, 0, 1);
-		let oe = 84381.406 / 3600 * Math.PI / 180;
+		const op = 365.242194 * 86400; // seconds
+		const oe = 84381.406 / 3600 * Math.PI / 180; // rad
 		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
+		d = d * 10;
 		for (let i = 0; i < d; i++) {
 			let v = new THREE.Vector3(0, 0, 1000).applyAxisAngle(axisY, Math.PI * 2 * i / d);
 			geometry.vertices.push(v);
@@ -158,23 +180,42 @@ void main() {
 
 			let ov = new THREE.Vector3(0, 0, 1000).applyAxisAngle(oev, Math.PI * 2 * i / d);
 			geometry.vertices.push(ov);
-			geometry.colors.push(new THREE.Color(0.8, 0.8, 0));
+			geometry.colors.push(new THREE.Color(0.8, 0.8, 0.4));
 		}
-		let points = new THREE.Points(geometry, this.starMaterial);
 
+		const aa = -19.3549 * Math.PI / 180; // rad/year
+		const om = 5.1454 * Math.PI / 180; // rad
+		let tt = this.data.timeMs / 1000.0 - 1174237200; // seconds from 2007/2/19
+		let yy = tt / op;
+		let omvv = new THREE.Vector3(0, 0, 1).applyAxisAngle(axisY, aa * yy);
+		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(omvv, om).applyAxisAngle(axisZ, oe);
+		let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(2000.0);
+		for (let i = 0; i < 270; i++) {
+			geometry.vertices.push(st.clone().applyAxisAngle(omv, Math.PI * 2 * i / 270));
+			geometry.colors.push(new THREE.Color(0.6, 0.5, 0.1));
+		}
+
+		let points = new THREE.Points(geometry, this.starMaterial);
 		this.el.object3D.add(points);
 		this.gridPoints = points;
 		this.gridPoints.visible = this.data.constellation;
 	},
 	_makeSun: function (d) {
-		let geometry = new THREE.SphereGeometry( 4.63, 32, 32 );
-		let material = new THREE.MeshBasicMaterial( {color: 0xffffee, fog: false} );
-		let sun = new THREE.Mesh( geometry, material );
-		sun.position.z = 1000;
+		let geometry = new THREE.SphereGeometry(18.5, 32, 32);
+		let material = new THREE.MeshBasicMaterial({ color: 0xffffee, fog: false });
+		let sun = new THREE.Mesh(geometry, material);
+		sun.position.z = 2000;
 		let sunC = new THREE.Object3D();
 		sunC.add(sun);
 		this.el.object3D.add(sunC);
 		this.sun = sunC;
+	},
+	_makeMoon: function (d) {
+		let geometry = new THREE.SphereGeometry(19, 32, 32);
+		let material = new THREE.MeshBasicMaterial({ color: 0x666633, fog: false });
+		let moon = new THREE.Mesh(geometry, material);
+		this.el.object3D.add(moon);
+		this.moon = moon;
 	},
 	_makeCLines: function (points, pointMap, constellations) {
 		var material = new THREE.LineBasicMaterial({
@@ -182,9 +223,17 @@ void main() {
 			fog: false
 		});
 		var geometry = new THREE.Geometry();
-		constellations.forEach(c => {
+		constellations.forEach((c) => {
+			for (let i = 0; i < c.lines.length; i++) {
+				if (pointMap[c.lines[i]] == null) {
+					console.log("star not found:", c, c.lines[i]);
+					c.lines.splice(i - i % 2, 2);
+					i = i - i % 2 - 1;
+					continue;
+				}
+			}
 			if (!c.lines.every(p => pointMap[p] != null) || c.lines.length % 2 != 0) {
-				console.log("star not found:", c);
+				console.log("invalid lines:", c, c.lines.filter(p => pointMap[p] == null));
 				return;
 			}
 			c.lines.forEach(p => geometry.vertices.push(points.geometry.vertices[pointMap[p]]));
@@ -210,12 +259,11 @@ AFRAME.registerShader('gridground', {
 	init: function (data) {
 		this.attributes = this.initVariables(data, 'attribute');
 		this.uniforms = THREE.UniformsUtils.merge([this.initVariables(data, 'uniform'), THREE.UniformsLib.fog]);
-		this.material = new (this.raw ? THREE.RawShaderMaterial : THREE.ShaderMaterial)({
+		this.material = new THREE.ShaderMaterial({
 			uniforms: this.uniforms,
 			vertexShader: this.vertexShader,
 			fragmentShader: this.fragmentShader,
 			fog: true,
-			transparent: true,
 			blending: THREE.AdditiveBlending
 		});
 	},
@@ -246,8 +294,8 @@ AFRAME.registerShader('gridground', {
 	#include <clipping_planes_pars_fragment>
 	void main() {
 		#include <clipping_planes_fragment>
-		vec2 gpos = abs(mod(vUv * 0.2, 1.0) - vec2(0.5,0.5));
-		float l = max(pow(0.5, gpos.x * 150.0), pow(0.5, gpos.y * 150.0)) * pow(0.5, length(gpos) * 40.0);
+		vec2 gpos = abs(mod(vUv * 0.5, 1.0) - vec2(0.5,0.5));
+		float l = max(pow(0.5, gpos.x * 260.0), pow(0.5, gpos.y * 260.0)) * pow(0.5, length(gpos) * 10.0);
 		if (l < 0.1) {
 			discard;
 		}
@@ -353,6 +401,9 @@ AFRAME.registerComponent('config-dialog', {
 				timeMs: t.getTime(), speed: this.speedEl.value * 1.0
 			});
 		});
+		this._getEl('gps').addEventListener('click', (e) => {
+			this.getCurrentLocation();
+		});
 		this.showDialog();
 	},
 	remove: function () {
@@ -367,8 +418,18 @@ AFRAME.registerComponent('config-dialog', {
 			[d2(t.getHours()), d2(t.getMinutes()), d2(t.getSeconds())].join(":");
 		this.el.setAttribute("visible", true);
 	},
-	_getEl(name) {
+	_getEl: function (name) {
 		return this.el.querySelector("[name=" + name + "]");
+	},
+	getCurrentLocation: function () {
+		if (!navigator.geolocation) {
+			console.log("geolocation unsupported");
+			return;
+		}
+		navigator.geolocation.getCurrentPosition(location => {
+			this.latEl.value = location.coords.latitude;
+			this.lngEl.value = location.coords.longitude;
+		});
 	}
 });
 
