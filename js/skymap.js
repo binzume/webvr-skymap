@@ -165,6 +165,9 @@ AFRAME.registerComponent('celestial-sphere', {
 			let axisY = new THREE.Vector3(0, 1, 0);
 			let axisZ = new THREE.Vector3(0, 0, 1);
 
+			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
+			this.moon.material.uniforms.light.value = axisZ.clone().applyAxisAngle(oev, d * Math.PI * 2);
+
 			let tt = time - 1174240800; // seconds from 2007/3/19
 			let yy = tt / op;
 			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, om).applyAxisAngle(axisY, aa * yy).applyAxisAngle(axisZ, oe);
@@ -195,9 +198,14 @@ AFRAME.registerComponent('celestial-sphere', {
 		doddedCircle(geometry, new THREE.Vector3(0, 0, this.data.radius), oev, d, new THREE.Color(0.8, 0.8, 0.4));
 
 		var v = axisZ.clone();
-		for (var i = 0; i < 12; i++) {
+		for (var i = 0; i < 6; i++) {
 			doddedCircle(geometry, new THREE.Vector3(0, this.data.radius, 0), v, d, new THREE.Color(0, 0, 0.4));
 			v.applyAxisAngle(axisY, 2 * Math.PI / 12);
+		}
+		v = new THREE.Vector3(this.data.radius, 0, 0);
+		for (var i = 1; i < 4; i++) {
+			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.4));
+			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, -Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.4));
 		}
 
 		const aa = -19.3549 * Math.PI / 180; // rad/year
@@ -213,7 +221,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.gridPoints = points;
 		this.gridPoints.visible = this.data.constellation;
 	},
-	_makeSun: function (d) {
+	_makeSun: function () {
 		let r = this.data.radius * 0.99 * Math.PI * 1.06 / 360;
 		let geometry = new THREE.SphereGeometry(r, 32, 32);
 		let material = new THREE.MeshBasicMaterial({ color: 0xffffee, fog: false });
@@ -224,10 +232,52 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.el.object3D.add(sunC);
 		this.sun = sunC;
 	},
-	_makeMoon: function (d) {
+	_makeMoon: function () {
+		let uniforms = {
+			color: { value: new THREE.Color(0x888877) },
+			light: { value: new THREE.Vector3(1, 1, 1) }
+		};
+		var shaderParams = {
+			uniforms: THREE.UniformsUtils.merge([uniforms, THREE.UniformsLib.fog]),
+			vertexShader: `
+			uniform vec3 color;
+			uniform vec3 light;
+			varying vec3 vNormal;
+			#include <common>
+			#include <color_pars_vertex>
+			#include <fog_pars_vertex>
+			#include <clipping_planes_pars_vertex>
+			void main() {
+				#include <beginnormal_vertex>
+				#include <defaultnormal_vertex>
+
+				#include <color_vertex>
+				#include <begin_vertex>
+				#include <project_vertex>
+				#include <clipping_planes_vertex>
+				#include <fog_vertex>
+				vNormal = normalize( objectNormal );
+			}`,
+			fragmentShader: `
+			uniform vec3 color;
+			uniform vec3 light;
+			varying vec3 vNormal;
+			#include <common>
+			#include <color_pars_fragment>
+			#include <fog_pars_fragment>
+			#include <clipping_planes_pars_fragment>
+			void main() {
+				#include <clipping_planes_fragment>
+				vec4 diffuseColor = vec4( color * clamp(dot(light, vNormal) * 4.0,0.0,1.0), 1.0 );
+				#include <color_fragment>
+				gl_FragColor = diffuseColor;
+				#include <fog_fragment>
+			}`
+		}
+		let material = new THREE.ShaderMaterial(shaderParams);
+		// let material = new THREE.MeshBasicMaterial({ color: 0x555544, fog: false });
 		let r = this.data.radius * 0.99 * Math.PI * 1.03 / 360;
 		let geometry = new THREE.SphereGeometry(r, 32, 32);
-		let material = new THREE.MeshBasicMaterial({ color: 0x555544, fog: false });
 		let moon = new THREE.Mesh(geometry, material);
 		this.el.object3D.add(moon);
 		this.moon = moon;
@@ -262,14 +312,7 @@ AFRAME.registerComponent('celestial-sphere', {
 
 AFRAME.registerShader('gridground', {
 	schema: {
-		color: { type: 'color', is: 'uniform', default: "#ffff00" },
-		height: { default: 256 },
-		offset: { type: 'vec2', default: { x: 0, y: 0 } },
-		repeat: { type: 'vec2', default: { x: 1, y: 1 } },
-		src: { type: 'map' },
-		width: { default: 512 },
-		wireframe: { default: false },
-		wireframeLinewidth: { default: 2 }
+		color: { type: 'color', is: 'uniform', default: "#ffff00" }
 	},
 	init: function (data) {
 		this.attributes = this.initVariables(data, 'attribute');
@@ -327,6 +370,7 @@ AFRAME.registerComponent('main-menu', {
 	},
 	init: function () {
 		this.configDialog = null;
+		let sphereEl = document.querySelector("[celestial-sphere]");
 		this._getEl('openConfigButton').addEventListener('click', (e) => {
 			if (!this.configDialog) {
 				this.configDialog = instantiate("configDialogTemplate", this.el);
@@ -338,28 +382,25 @@ AFRAME.registerComponent('main-menu', {
 			document.querySelector('a-scene').exitVR();
 		});
 		this._getEl('constellations').addEventListener('click', (e) => {
-			var el = document.querySelector("[celestial-sphere]");
-			var v = !el.getAttribute("celestial-sphere").constellation;
-			el.setAttribute("celestial-sphere", "constellation", v);
-			el.setAttribute("celestial-sphere", "grid", v);
+			sphereEl.setAttribute("celestial-sphere", "constellation", !sphereEl.getAttribute("celestial-sphere").constellation);
 		});
 		this._getEl('speed-x1').addEventListener('click', (e) => {
-			document.querySelector("[celestial-sphere]").setAttribute("celestial-sphere", "speed", 1.0);
+			sphereEl.setAttribute("celestial-sphere", "speed", 1.0);
 		});
 		this._getEl('speed-x60').addEventListener('click', (e) => {
-			document.querySelector("[celestial-sphere]").setAttribute("celestial-sphere", "speed", 60.0);
+			sphereEl.setAttribute("celestial-sphere", "speed", 60.0);
 		});
 		this._getEl('speed-x300').addEventListener('click', (e) => {
-			document.querySelector("[celestial-sphere]").setAttribute("celestial-sphere", "speed", 300.0);
+			sphereEl.setAttribute("celestial-sphere", "speed", 300.0);
 		});
 		this._getEl('speed-x3600').addEventListener('click', (e) => {
-			document.querySelector("[celestial-sphere]").setAttribute("celestial-sphere", "speed", 3600.0);
+			sphereEl.setAttribute("celestial-sphere", "speed", 3600.0);
 		});
 		this._getEl('time-now').addEventListener('click', (e) => {
-			document.querySelector("[celestial-sphere]").setAttribute("celestial-sphere", "timeMs", Date.now());
+			sphereEl.setAttribute("celestial-sphere", "timeMs", Date.now());
 		});
 		this.timer = setInterval(() => {
-			let t = new Date(document.querySelector("[celestial-sphere]").getAttribute("celestial-sphere").timeMs);
+			let t = new Date(sphereEl.getAttribute("celestial-sphere").timeMs);
 			let d2 = n => ("0" + n).substr(-2);
 			let timeStr = [t.getFullYear(), d2(t.getMonth() + 1), d2(t.getDate())].join("-") + " " +
 				[d2(t.getHours()), d2(t.getMinutes()), d2(t.getSeconds())].join(":");
