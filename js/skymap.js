@@ -25,53 +25,53 @@ AFRAME.registerComponent('celestial-sphere', {
 		radius: { type: 'number', default: 4000 },
 		constellationSrc: { type: 'string', default: "" },
 		constellation: { type: 'boolean', default: false },
+		grid: { type: 'boolean', default: false },
 		debug: { type: 'boolean', default: true }
 	},
 	init: function () {
-
 		var starMaterialParams = {
 			uniforms: THREE.ShaderLib.points.uniforms,
 			vertexShader: `
-uniform float size;
-uniform float scale;
-#include <common>
-#include <color_pars_vertex>
-#include <morphtarget_pars_vertex>
-#include <logdepthbuf_pars_vertex>
-#include <clipping_planes_pars_vertex>
-void main() {
-	#include <color_vertex>
-	#include <begin_vertex>
-	#include <morphtarget_vertex>
-	#include <project_vertex>
-	gl_PointSize = size;
-	#include <logdepthbuf_vertex>
-	#include <clipping_planes_vertex>
-	#include <worldpos_vertex>
-}`,
+			uniform float size;
+			uniform float scale;
+			#include <common>
+			#include <color_pars_vertex>
+			#include <morphtarget_pars_vertex>
+			#include <logdepthbuf_pars_vertex>
+			#include <clipping_planes_pars_vertex>
+			void main() {
+				#include <color_vertex>
+				#include <begin_vertex>
+				#include <morphtarget_vertex>
+				#include <project_vertex>
+				gl_PointSize = size;
+				#include <logdepthbuf_vertex>
+				#include <clipping_planes_vertex>
+				#include <worldpos_vertex>
+			}`,
 			fragmentShader: `
-uniform vec3 diffuse;
-uniform float opacity;
-#include <common>
-#include <color_pars_fragment>
-#include <map_particle_pars_fragment>
-#include <logdepthbuf_pars_fragment>
-#include <clipping_planes_pars_fragment>
-void main() {
-	#include <clipping_planes_fragment>
-	vec3 outgoingLight = vec3( 0.0 );
-	vec4 diffuseColor = vec4( diffuse, opacity );
-	#include <logdepthbuf_fragment>
-	#include <map_particle_fragment>
-	#include <color_fragment>
-	#include <alphatest_fragment>
-	outgoingLight = diffuseColor.rgb;
-	outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0 - 0.3);
-	gl_FragColor = vec4( outgoingLight, diffuseColor.a );
-	#include <premultiplied_alpha_fragment>
-	#include <tonemapping_fragment>
-	#include <encodings_fragment>
-}`,
+			uniform vec3 diffuse;
+			uniform float opacity;
+			#include <common>
+			#include <color_pars_fragment>
+			#include <map_particle_pars_fragment>
+			#include <logdepthbuf_pars_fragment>
+			#include <clipping_planes_pars_fragment>
+			void main() {
+				#include <clipping_planes_fragment>
+				vec3 outgoingLight = vec3( 0.0 );
+				vec4 diffuseColor = vec4( diffuse, opacity );
+				#include <logdepthbuf_fragment>
+				#include <map_particle_fragment>
+				#include <color_fragment>
+				#include <alphatest_fragment>
+				outgoingLight = diffuseColor.rgb;
+				outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0 - 0.3);
+				gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+				#include <premultiplied_alpha_fragment>
+				#include <tonemapping_fragment>
+				#include <encodings_fragment>
+			}`,
 			vertexColors: THREE.VertexColors,
 			depthWrite: false,
 			blending: THREE.AdditiveBlending
@@ -79,11 +79,16 @@ void main() {
 		var starMaterial = new THREE.ShaderMaterial(starMaterialParams);
 		starMaterial.uniforms.size.value = 3;
 		this.starMaterial = starMaterial;
+		this.currentSpeed = 0;
+		this.gridLastUpdated = 0;
+		this.gridPoints = null;
+
+		this._makeSun();
+		this._makeMoon();
+
 		if (this.data.realtime) {
 			this.el.setAttribute("celestial-sphere", { timeMs: Date.now() });
 		}
-		this.currentSpeed = 0;
-		this.gridLastUpdated = 0;
 
 		getJson(this.data.src, (result) => {
 			result = result || [];
@@ -118,8 +123,6 @@ void main() {
 					if (constellations) this._makeCLines(points, pointMap, constellations);
 				});
 			}
-			this._makeSun();
-			this._makeMoon();
 		});
 	},
 	update: function () {
@@ -140,12 +143,15 @@ void main() {
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(deg), 0, 'XYZ');
 		if (this.constellations) {
 			this.constellations.visible = this.data.constellation;
-			if (Math.abs(this.gridLastUpdated - this.data.timeMs) > 86400) {
-				this._makeGrid(48);
-			}
 		}
-		if (this.gridPoints) {
-			this.gridPoints.visible = this.data.constellation;
+		if (this.data.grid) {
+			if (Math.abs(this.gridLastUpdated - this.data.timeMs) > 86400) {
+				this._makeGrid(48 * 2);
+			}
+		} else if (this.gridPoints !== null) {
+			this.el.object3D.remove(this.gridPoints);
+			this.gridPoints = null;
+			this.gridLastUpdated = 0;
 		}
 		if (this.sun) {
 			let axisZ = new THREE.Vector3(0, 0, 1);
@@ -161,8 +167,7 @@ void main() {
 
 			let tt = time - 1174240800; // seconds from 2007/3/19
 			let yy = tt / op;
-			let omvv = new THREE.Vector3(0, 0, 1).applyAxisAngle(axisY, aa * yy);
-			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(omvv, om).applyAxisAngle(axisZ, oe);
+			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, om).applyAxisAngle(axisY, aa * yy).applyAxisAngle(axisZ, oe);
 			let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius * 0.98);
 			this.moon.position.copy(st.applyAxisAngle(omv, (tt % mop) / mop * 2 * Math.PI));
 		}
@@ -180,28 +185,28 @@ void main() {
 		const op = 365.242194 * 86400; // seconds
 		const oe = 84381.406 / 3600 * Math.PI / 180; // rad
 		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
-		d = d * 10;
-		for (let i = 0; i < d; i++) {
-			let v = new THREE.Vector3(0, 0, this.data.radius).applyAxisAngle(axisY, Math.PI * 2 * i / d);
-			geometry.vertices.push(v);
-			geometry.colors.push(new THREE.Color(0.8, 0, 0));
+		var doddedCircle = function (geometry, init, axis, n, color) {
+			for (let i = 0; i < n; i++) {
+				geometry.vertices.push(init.clone().applyAxisAngle(axis, Math.PI * 2 * i / n));
+				geometry.colors.push(color);
+			}
+		};
+		doddedCircle(geometry, new THREE.Vector3(0, 0, this.data.radius), axisY, d, new THREE.Color(0.8, 0, 0));
+		doddedCircle(geometry, new THREE.Vector3(0, 0, this.data.radius), oev, d, new THREE.Color(0.8, 0.8, 0.4));
 
-			let ov = new THREE.Vector3(0, 0, this.data.radius).applyAxisAngle(oev, Math.PI * 2 * i / d);
-			geometry.vertices.push(ov);
-			geometry.colors.push(new THREE.Color(0.8, 0.8, 0.4));
+		var v = axisZ.clone();
+		for (var i = 0; i < 12; i++) {
+			doddedCircle(geometry, new THREE.Vector3(0, this.data.radius, 0), v, d, new THREE.Color(0, 0, 0.4));
+			v.applyAxisAngle(axisY, 2 * Math.PI / 12);
 		}
 
 		const aa = -19.3549 * Math.PI / 180; // rad/year
 		const om = 5.1454 * Math.PI / 180; // rad
 		let tt = this.data.timeMs / 1000.0 - 1174237200; // seconds from 2007/2/19
 		let yy = tt / op;
-		let omvv = new THREE.Vector3(0, 0, 1).applyAxisAngle(axisY, aa * yy);
-		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(omvv, om).applyAxisAngle(axisZ, oe);
-		let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius * 0.98);
-		for (let i = 0; i < 270; i++) {
-			geometry.vertices.push(st.clone().applyAxisAngle(omv, Math.PI * 2 * i / 270));
-			geometry.colors.push(new THREE.Color(0.6, 0.5, 0.1));
-		}
+		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, om).applyAxisAngle(axisY, aa * yy).applyAxisAngle(axisZ, oe);
+		let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius);
+		doddedCircle(geometry, st, omv, 270, new THREE.Color(0.6, 0.5, 0.1));
 
 		let points = new THREE.Points(geometry, this.starMaterial);
 		this.el.object3D.add(points);
@@ -209,7 +214,7 @@ void main() {
 		this.gridPoints.visible = this.data.constellation;
 	},
 	_makeSun: function (d) {
-		let r = this.data.radius * 0.99 * 2 * Math.PI * 1.06 / 360;
+		let r = this.data.radius * 0.99 * Math.PI * 1.06 / 360;
 		let geometry = new THREE.SphereGeometry(r, 32, 32);
 		let material = new THREE.MeshBasicMaterial({ color: 0xffffee, fog: false });
 		let sun = new THREE.Mesh(geometry, material);
@@ -220,7 +225,7 @@ void main() {
 		this.sun = sunC;
 	},
 	_makeMoon: function (d) {
-		let r = this.data.radius * 0.99 * 2 * Math.PI * 1.03 / 360;
+		let r = this.data.radius * 0.99 * Math.PI * 1.03 / 360;
 		let geometry = new THREE.SphereGeometry(r, 32, 32);
 		let material = new THREE.MeshBasicMaterial({ color: 0x555544, fog: false });
 		let moon = new THREE.Mesh(geometry, material);
@@ -334,7 +339,9 @@ AFRAME.registerComponent('main-menu', {
 		});
 		this._getEl('constellations').addEventListener('click', (e) => {
 			var el = document.querySelector("[celestial-sphere]");
-			el.setAttribute("celestial-sphere", "constellation", !el.getAttribute("celestial-sphere").constellation);
+			var v = !el.getAttribute("celestial-sphere").constellation;
+			el.setAttribute("celestial-sphere", "constellation", v);
+			el.setAttribute("celestial-sphere", "grid", v);
 		});
 		this._getEl('speed-x1').addEventListener('click', (e) => {
 			document.querySelector("[celestial-sphere]").setAttribute("celestial-sphere", "speed", 1.0);
