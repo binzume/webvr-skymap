@@ -159,7 +159,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.sun.setRotationFromAxisAngle(oev, d * Math.PI * 2);
 		}
 		if (this.moon) {
-			const mop = 2360591.58; // seconds
+			const mop = 27.32166155 * 86400; // seconds
 			const om = 5.1454 * Math.PI / 180; // rad
 			const aa = -19.3549 * Math.PI / 180; // rad/year
 			let axisY = new THREE.Vector3(0, 1, 0);
@@ -168,11 +168,16 @@ AFRAME.registerComponent('celestial-sphere', {
 			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
 			this.moon.material.uniforms.light.value = axisZ.clone().applyAxisAngle(oev, d * Math.PI * 2);
 
-			let tt = time - 1174240800; // seconds from 2007/3/19
+			const am = 27.55454988 * 86400 // seconds
+			const em = 0.055545526;
+			let tr = (time - new Date(2019,1,19, 18,3,0).getTime() / 1000) % am / am; // 2019-02-19 18:03:00(JST)
+			let md = 2 * em * Math.sin(tr * 2 * Math.PI);
+
+			let tt = time - 1174266000; // seconds from 2007/3/19 10am(JST)
 			let yy = tt / op;
 			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, om).applyAxisAngle(axisY, aa * yy).applyAxisAngle(axisZ, oe);
 			let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius * 0.98);
-			this.moon.position.copy(st.applyAxisAngle(omv, (tt % mop) / mop * 2 * Math.PI));
+			this.moon.position.copy(st.applyAxisAngle(omv, (tt % mop) / mop * 2 * Math.PI + md));
 		}
 	},
 	remove: function () {
@@ -268,7 +273,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			#include <clipping_planes_pars_fragment>
 			void main() {
 				#include <clipping_planes_fragment>
-				vec4 diffuseColor = vec4( color * clamp(dot(light, vNormal) * 4.0,0.0,1.0), 1.0 );
+				vec4 diffuseColor = vec4( color * clamp(dot(light, vNormal) * 4.0,0.1,1.0), 1.0 );
 				#include <color_fragment>
 				gl_FragColor = diffuseColor;
 				#include <fog_fragment>
