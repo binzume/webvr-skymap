@@ -25,8 +25,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		radius: { type: 'number', default: 4000 },
 		constellationSrc: { type: 'string', default: "" },
 		constellation: { type: 'boolean', default: false },
-		grid: { type: 'boolean', default: false },
-		debug: { type: 'boolean', default: true }
+		grid: { type: 'boolean', default: false }
 	},
 	init: function () {
 		var starMaterialParams = {
@@ -82,6 +81,20 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.currentSpeed = 0;
 		this.gridLastUpdated = 0;
 		this.gridPoints = null;
+		this.epoch = 946727935.816; // J2000.0
+		this.oe = {
+			moon: {
+				a: 1, e: 0.055545526, i: 5.15668983 * Math.PI / 180,
+				l0: 218.31664563 * Math.PI / 180, l1: 1732559343.48470 / 3600 * Math.PI / 180,
+				o0: 125.04455501 * Math.PI / 180, o1: -6967919.3631 / 3600 * Math.PI / 180,
+				p0: 83.35324312 * Math.PI / 180, p1: 14643420.2669 / 3600 * Math.PI / 180
+			},
+			earth: {
+				a: 1.00000261,
+				l0: 100.46645683 * Math.PI / 180, l1: 129597742.283429 / 3600 * Math.PI / 180,
+				at: 84381.406 / 3600 * Math.PI / 180
+			}
+		};
 
 		this._makeSun();
 		this._makeMoon();
@@ -134,18 +147,18 @@ AFRAME.registerComponent('celestial-sphere', {
 				this.el.setAttribute("celestial-sphere", { timeMs: this.data.timeMs + delta, realtime: false })
 			}, this.data.updateIntervalMs);
 		}
-		const op = 365.242194 * 86400; // seconds
-		const oe = 84381.406 / 3600 * Math.PI / 180; // rad
 
-		let time = this.data.timeMs / 1000.0;
-		let d = (time - 79.25 * 86400) % op / op; // from spring equinox (79: Spring equinox in 1970)
-		let deg = -360 * (d + time % 86400 / 86400) - this.data.lng;
-		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), THREE.Math.degToRad(deg), 0, 'XYZ');
+		let time = this.data.timeMs / 1000.0 - this.epoch;
+		let T = time / (36525 * 86400);
+		let d = (Math.PI + this.oe.earth.l0 + this.oe.earth.l1 * T) % (2 * Math.PI);
+
+		let er = d + (time % 86400 / 86400 + this.data.lng / 360) * 2 * Math.PI + Math.PI;
+		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), -er, 0);
 		if (this.constellations) {
 			this.constellations.visible = this.data.constellation;
 		}
 		if (this.data.grid) {
-			if (Math.abs(this.gridLastUpdated - this.data.timeMs) > 86400) {
+			if (Math.abs(this.gridLastUpdated - this.data.timeMs) > 3600000) {
 				this._makeGrid(48 * 2);
 			}
 		} else if (this.gridPoints !== null) {
@@ -154,30 +167,28 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.gridLastUpdated = 0;
 		}
 		if (this.sun) {
-			let axisZ = new THREE.Vector3(0, 0, 1);
-			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
-			this.sun.setRotationFromAxisAngle(oev, d * Math.PI * 2);
+			const axisZ = new THREE.Vector3(0, 0, 1);
+			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, this.oe.earth.at);
+			this.sun.setRotationFromAxisAngle(oev, d);
 		}
 		if (this.moon) {
-			const mop = 27.32166155 * 86400; // seconds
-			const om = 5.1454 * Math.PI / 180; // rad
-			const aa = -19.3549 * Math.PI / 180; // rad/year
-			let axisY = new THREE.Vector3(0, 1, 0);
-			let axisZ = new THREE.Vector3(0, 0, 1);
+			const axisY = new THREE.Vector3(0, 1, 0);
+			const axisZ = new THREE.Vector3(0, 0, 1);
 
-			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
-			this.moon.material.uniforms.light.value = axisZ.clone().applyAxisAngle(oev, d * Math.PI * 2);
+			let params = this.oe.moon;
+			params.a = this.data.radius * 0.98;
 
-			const am = 27.55454988 * 86400 // seconds
-			const em = 0.055545526;
-			let tr = (time - new Date(2019,1,19, 18,3,0).getTime() / 1000) % am / am; // 2019-02-19 18:03:00(JST)
-			let md = 2 * em * Math.sin(tr * 2 * Math.PI);
+			let L = params.l0 + params.l1 * T;
+			let M = L - (params.p0 + params.p1 * T);
+			let mo = params.o0 + params.o1 * T;
+			let md = 2 * params.e * Math.sin(M);
+			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ, this.oe.earth.at);
+			let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(params.a);
+			let pos = st.applyAxisAngle(omv, L + md);
 
-			let tt = time - 1174266000; // seconds from 2007/3/19 10am(JST)
-			let yy = tt / op;
-			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, om).applyAxisAngle(axisY, aa * yy).applyAxisAngle(axisZ, oe);
-			let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius * 0.98);
-			this.moon.position.copy(st.applyAxisAngle(omv, (tt % mop) / mop * 2 * Math.PI + md));
+			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, this.oe.earth.at);
+			this.moon.position.copy(pos);
+			this.moon.material.uniforms.light.value = axisZ.clone().applyAxisAngle(oev, d);
 		}
 	},
 	remove: function () {
@@ -186,13 +197,14 @@ AFRAME.registerComponent('celestial-sphere', {
 		if (this.gridPoints) {
 			this.el.object3D.remove(this.gridPoints);
 		}
+		let time = this.data.timeMs / 1000.0 - this.epoch;
+		let T = time / (36525 * 86400);
+
 		this.gridLastUpdated = this.data.timeMs;
 		let geometry = new THREE.Geometry();
 		let axisY = new THREE.Vector3(0, 1, 0);
 		let axisZ = new THREE.Vector3(0, 0, 1);
-		const op = 365.242194 * 86400; // seconds
-		const oe = 84381.406 / 3600 * Math.PI / 180; // rad
-		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, oe);
+		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, this.oe.earth.at);
 		var doddedCircle = function (geometry, init, axis, n, color) {
 			for (let i = 0; i < n; i++) {
 				geometry.vertices.push(init.clone().applyAxisAngle(axis, Math.PI * 2 * i / n));
@@ -213,18 +225,16 @@ AFRAME.registerComponent('celestial-sphere', {
 			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, -Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.4));
 		}
 
-		const aa = -19.3549 * Math.PI / 180; // rad/year
-		const om = 5.1454 * Math.PI / 180; // rad
-		let tt = this.data.timeMs / 1000.0 - 1174237200; // seconds from 2007/2/19
-		let yy = tt / op;
-		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, om).applyAxisAngle(axisY, aa * yy).applyAxisAngle(axisZ, oe);
+		let params = this.oe.moon;
+		let mo = params.o0 + params.o1 * T;
+		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ, this.oe.earth.at);
 		let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius);
 		doddedCircle(geometry, st, omv, 270, new THREE.Color(0.6, 0.5, 0.1));
 
 		let points = new THREE.Points(geometry, this.starMaterial);
 		this.el.object3D.add(points);
 		this.gridPoints = points;
-		this.gridPoints.visible = this.data.constellation;
+		this.gridPoints.visible = this.data.grid;
 	},
 	_makeSun: function () {
 		let r = this.data.radius * 0.99 * Math.PI * 1.06 / 360;
