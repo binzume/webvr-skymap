@@ -9,13 +9,13 @@
   <script src="https://binzume.github.io/aframe-xylayout/aframe-xylayout.js?4"></script>
   <script src="https://binzume.github.io/aframe-xylayout/aframe-window.js?4"></script>
   <script src="js/utils.js"></script>
-  <script src="js/skymap.js?9"></script>
+  <script src="js/skymap.js?0"></script>
   <script src="3rdparty/aframe-material.js"></script>
 </head>
 
 <body style="background-color: black; color:white;">
   <a-scene fog="type: linear; color: #000; near:10;far:50;" cursor="rayOrigin: mouse; fuse:false"
-    raycaster="objects:.clickable,a-rounded;far:Infinity" renderer="antialias:true;">
+    raycaster="objects:.collidable,.clickable,a-rounded;far:Infinity" renderer="antialias:true;">
     <a-sky menu-on-click="template:mainMenuTemplate;offsetY:-1"></a-sky>
 
     <a-assets>
@@ -67,10 +67,10 @@
 
     <a-entity position="0 0 0" celestial-sphere="src:data/hip_stars.json?;updateIntervalMs:100;speed:100;constellationSrc:data/hip_constellations.json"></a-entity>
 
-    <a-entity id="camerapos">
+    <a-entity id="camera-rig" position-controls="arrowkeys:rotation">
       <a-camera position="0 1.5 0" wasd-controls-enabled look-controls="enabled:false"></a-camera>
-      <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
-      <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
+      <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
+      <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
     </a-entity>
 
     <a-plane id="ground" material="shader:gridground" rotation="-90 0 0" position="0 0 0" width="1000" height="1000" color="#111188"></a-plane>

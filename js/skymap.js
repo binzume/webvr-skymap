@@ -3,11 +3,10 @@
 AFRAME.ASSETS_PATH = "./3rdparty/assets"; // assets for a-frame-material
 
 function instantiate(id, parent) {
-	var p = document.createElement('a-entity');
+	var p = document.createElement('div');
 	p.innerHTML = document.querySelector('#' + id).innerHTML;
 	var el = p.firstElementChild;
 	(parent || document.querySelector("a-scene")).appendChild(el);
-	p.destroy();
 	return el;
 }
 
@@ -35,41 +34,24 @@ AFRAME.registerComponent('celestial-sphere', {
 			uniform float scale;
 			#include <common>
 			#include <color_pars_vertex>
-			#include <morphtarget_pars_vertex>
-			#include <logdepthbuf_pars_vertex>
-			#include <clipping_planes_pars_vertex>
 			void main() {
 				#include <color_vertex>
 				#include <begin_vertex>
-				#include <morphtarget_vertex>
 				#include <project_vertex>
 				gl_PointSize = size;
-				#include <logdepthbuf_vertex>
-				#include <clipping_planes_vertex>
-				#include <worldpos_vertex>
 			}`,
 			fragmentShader: `
 			uniform vec3 diffuse;
 			uniform float opacity;
 			#include <common>
 			#include <color_pars_fragment>
-			#include <map_particle_pars_fragment>
-			#include <logdepthbuf_pars_fragment>
-			#include <clipping_planes_pars_fragment>
 			void main() {
-				#include <clipping_planes_fragment>
 				vec3 outgoingLight = vec3( 0.0 );
 				vec4 diffuseColor = vec4( diffuse, opacity );
-				#include <logdepthbuf_fragment>
-				#include <map_particle_fragment>
 				#include <color_fragment>
-				#include <alphatest_fragment>
 				outgoingLight = diffuseColor.rgb;
 				outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0 - 0.3);
 				gl_FragColor = vec4( outgoingLight, diffuseColor.a );
-				#include <premultiplied_alpha_fragment>
-				#include <tonemapping_fragment>
-				#include <encodings_fragment>
 			}`,
 			vertexColors: THREE.VertexColors,
 			depthWrite: false,
@@ -191,8 +173,6 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.moon.material.uniforms.light.value = axisZ.clone().applyAxisAngle(oev, d);
 		}
 	},
-	remove: function () {
-	},
 	_makeGrid: function (d) {
 		if (this.gridPoints) {
 			this.el.object3D.remove(this.gridPoints);
@@ -261,15 +241,12 @@ AFRAME.registerComponent('celestial-sphere', {
 			#include <common>
 			#include <color_pars_vertex>
 			#include <fog_pars_vertex>
-			#include <clipping_planes_pars_vertex>
 			void main() {
 				#include <beginnormal_vertex>
 				#include <defaultnormal_vertex>
-
 				#include <color_vertex>
 				#include <begin_vertex>
 				#include <project_vertex>
-				#include <clipping_planes_vertex>
 				#include <fog_vertex>
 				vNormal = normalize( objectNormal );
 			}`,
@@ -280,9 +257,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			#include <common>
 			#include <color_pars_fragment>
 			#include <fog_pars_fragment>
-			#include <clipping_planes_pars_fragment>
 			void main() {
-				#include <clipping_planes_fragment>
 				vec4 diffuseColor = vec4( color * clamp(dot(light, vNormal) * 4.0,0.1,1.0), 1.0 );
 				#include <color_fragment>
 				gl_FragColor = diffuseColor;
@@ -322,6 +297,55 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.el.object3D.add(line);
 		this.constellations = line;
 		this.constellations.visible = this.data.constellation;
+	}
+});
+
+AFRAME.registerComponent('position-controls', {
+	schema: {
+		arrowKeys: { default: "" },
+		rotationSpeed: { default: 0.1 },
+		speed: { default: 0.1 }
+	},
+	init: function () {
+		if (this.data.arrowkeys == "rotation") {
+			document.addEventListener('keydown', ev => {
+				let rot = this.data.rotationSpeed;
+				switch (ev.code) {
+					case "ArrowRight":
+						this.el.object3D.rotateY(-rot);
+						break;
+					case "ArrowLeft":
+						this.el.object3D.rotateY(rot);
+						break;
+					case "ArrowDown":
+						this.el.object3D.rotateX(-rot);
+						break;
+					case "ArrowUp":
+						this.el.object3D.rotateX(rot);
+						break;
+					case "Space":
+						this.el.setAttribute("rotation", { x: 0, y: 0, z: 0 });
+						break;
+				}
+			});
+		}
+		document.addEventListener('wheel', ev => {
+			this.el.object3D.translateZ(ev.deltaY * 0.01);
+		});
+		this.el.addEventListener('gripdown', ev => {
+			document.querySelectorAll("[xy-drag-control]").forEach(el => {
+				el.setAttribute("xy-drag-control", { mode: "move" });
+			});
+		});
+		this.el.addEventListener('gripup', ev => {
+			document.querySelectorAll("[xy-drag-control]").forEach(el => {
+				el.setAttribute("xy-drag-control", { mode: "grab" });
+			});
+		});
+		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('axismove', ev => {
+			this.el.object3D.translateX(ev.detail.axis[0] * this.data.speed);
+			this.el.object3D.translateZ(ev.detail.axis[1] * this.data.speed);
+		}));
 	}
 });
 
@@ -368,7 +392,7 @@ AFRAME.registerShader('gridground', {
 	void main() {
 		#include <clipping_planes_fragment>
 		vec2 gpos = abs(mod(vUv * 0.5, 1.0) - vec2(0.5,0.5));
-		float l = max(pow(0.5, gpos.x * 260.0), pow(0.5, gpos.y * 260.0)) * pow(0.5, length(gpos) * 10.0);
+		float l = max(pow(0.5, gpos.x * 300.0), pow(0.5, gpos.y * 300.0)) * pow(0.5, length(gpos) * 10.0);
 		if (l < 0.1) {
 			discard;
 		}
@@ -509,53 +533,4 @@ AFRAME.registerComponent('config-dialog', {
 
 window.addEventListener('DOMContentLoaded', (function (e) {
 	document.querySelector("[main-menu]") || instantiate('mainMenuTemplate');
-
-	document.addEventListener('keydown', (function (e) {
-		var camerEl = document.querySelector('#camerapos');
-		var rotSpeed = 0.1;
-		switch (e.code) {
-			case "ArrowRight":
-				camerEl.object3D.rotateY(-rotSpeed);
-				break;
-			case "ArrowLeft":
-				camerEl.object3D.rotateY(rotSpeed);
-				break;
-			case "ArrowDown":
-				camerEl.object3D.rotateX(-rotSpeed);
-				break;
-			case "ArrowUp":
-				camerEl.object3D.rotateX(rotSpeed);
-				break;
-			case "Space":
-				camerEl.setAttribute("rotation", { x: 0, y: 0, z: 0 });
-				break;
-		}
-	}));
-
-	document.addEventListener('wheel', (function (e) {
-		document.querySelector('#camerapos').object3D.translateZ(e.deltaY * 0.01);
-	}));
-
-	var lastButton = false;
-	function update() {
-		var gp = navigator.getGamepads();
-		if (gp.length > 0 && gp[0] != null) {
-			var b = gp[0].buttons[0].pressed;
-			if (!lastButton && b) {
-				// press
-				document.querySelectorAll("[drag-rotation]").forEach((el) => {
-					el.setAttribute("drag-rotation", { mode: "move" });
-				});
-			}
-			if (lastButton && !b) {
-				// release
-				document.querySelectorAll("[drag-rotation]").forEach((el) => {
-					el.setAttribute("drag-rotation", { mode: "pan" });
-				});
-			}
-			lastButton = b;
-		}
-		requestAnimationFrame(update);
-	}
-	update();
 }), false);
