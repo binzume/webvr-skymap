@@ -1,12 +1,12 @@
 "use strict";
 
 if (typeof AFRAME === 'undefined') {
-    throw 'AFRAME is not loaded.';
+	throw 'AFRAME is not loaded.';
 }
 
 AFRAME.registerComponent('celestial-sphere', {
 	schema: {
-		src: { type: 'string', default: "hip_stars.json" },
+		src: { type: 'string', default: "" },
 		lat: { type: 'number', default: 35 },
 		lng: { type: 'number', default: 140.0 },
 		realtime: { type: 'boolean', default: true },
@@ -74,53 +74,23 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		this._makeSun();
 		this._makeMoon();
+		if (this.data.src !== '') {
+			this._loadStars(this.data.src);
+		}
 
 		if (this.data.realtime) {
 			this.el.setAttribute("celestial-sphere", { timeMs: Date.now() });
 		}
-
-		getJson(this.data.src, (result) => {
-			result = result || [];
-			let geometry = new THREE.Geometry();
-			let axisY = new THREE.Vector3(0, 1, 0);
-			let axisX = new THREE.Vector3(1, 0, 0);
-			let pointMap = {};
-			for (let i = 0; i < result.length; i++) {
-				var star = result[i];
-
-				let v = new THREE.Vector3(0, 0, this.data.radius);
-				v.applyAxisAngle(axisX, -star.dec);
-				v.applyAxisAngle(axisY, star.ra);
-
-				let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
-				let t = 4600 * ((1 / ((0.92 * star.bv) + 1.7)) + (1 / ((0.92 * star.bv) + 0.62)));
-				if (t < 6504) {
-					let bg = t / 6504 * 0.3 + 0.7;
-					geometry.colors.push(new THREE.Color(b, b * bg, b * bg));
-				} else {
-					let rg = 6504 / t * 0.4 + 0.6;
-					geometry.colors.push(new THREE.Color(b * rg, b * rg, b));
-				}
-				if (star.id != null) pointMap[star.id] = geometry.vertices.length;
-				geometry.vertices.push(v);
-			}
-			let points = new THREE.Points(geometry, starMaterial);
-			this.el.setObject3D('mesh', points);
-
-			if (this.data.constellationSrc != "") {
-				getJson(this.data.constellationSrc, (constellations) => {
-					if (constellations) this._makeCLines(points, pointMap, constellations);
-				});
-			}
-		});
 	},
 	update: function () {
-		if (this.data.updateIntervalMs > 0 && this.currentSpeed != this.data.speed) {
+		if (this.data.updateIntervalMs > 0 && (this.currentSpeed != this.data.speed || this.currentTimeMs != this.data.timeMs)) {
 			this.currentSpeed = this.data.speed;
 			clearInterval(this.intervalId);
-			let delta = this.data.speed * this.data.updateIntervalMs;
+			let startTime = Date.now();
+			let baseTime = this.data.timeMs;
 			this.intervalId = setInterval(() => {
-				this.el.setAttribute("celestial-sphere", { timeMs: this.data.timeMs + delta, realtime: false })
+				this.currentTimeMs = baseTime + (Date.now() - startTime) * this.data.speed;
+				this.el.setAttribute("celestial-sphere", { timeMs: this.currentTimeMs, realtime: false })
 			}, this.data.updateIntervalMs);
 		}
 
@@ -176,8 +146,8 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		this.gridLastUpdated = this.data.timeMs;
 		let geometry = new THREE.Geometry();
-		let axisY = new THREE.Vector3(0, 1, 0);
-		let axisZ = new THREE.Vector3(0, 0, 1);
+		const axisY = new THREE.Vector3(0, 1, 0);
+		const axisZ = new THREE.Vector3(0, 0, 1);
 		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, this.oe.earth.at);
 		var doddedCircle = function (geometry, init, axis, n, color) {
 			for (let i = 0; i < n; i++) {
@@ -266,30 +236,67 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.el.object3D.add(moon);
 		this.moon = moon;
 	},
-	_makeCLines: function (points, pointMap, constellations) {
-		var material = new THREE.LineBasicMaterial({
-			color: 0x002244,
-			fog: false
-		});
-		var geometry = new THREE.Geometry();
-		constellations.forEach((c) => {
-			for (let i = 0; i < c.lines.length; i++) {
-				if (pointMap[c.lines[i]] == null) {
-					console.log("star not found:", c, c.lines[i]);
-					c.lines.splice(i - i % 2, 2);
-					i = i - i % 2 - 1;
-					continue;
+	_loadStars: function (src) {
+		getJson(src, (result) => {
+			result = result || [];
+			let geometry = new THREE.Geometry();
+			const axisY = new THREE.Vector3(0, 1, 0);
+			const axisX = new THREE.Vector3(1, 0, 0);
+			let pointMap = {};
+			for (let i = 0; i < result.length; i++) {
+				var star = result[i];
+
+				let v = new THREE.Vector3(0, 0, this.data.radius);
+				v.applyAxisAngle(axisX, -star.dec);
+				v.applyAxisAngle(axisY, star.ra);
+
+				let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
+				let t = 4600 * ((1 / ((0.92 * star.bv) + 1.7)) + (1 / ((0.92 * star.bv) + 0.62)));
+				if (t < 6504) {
+					let bg = t / 6504 * 0.3 + 0.7;
+					geometry.colors.push(new THREE.Color(b, b * bg, b * bg));
+				} else {
+					let rg = 6504 / t * 0.4 + 0.6;
+					geometry.colors.push(new THREE.Color(b * rg, b * rg, b));
 				}
+				if (star.id != null) pointMap[star.id] = geometry.vertices.length;
+				geometry.vertices.push(v);
 			}
-			if (!c.lines.every(p => pointMap[p] != null) || c.lines.length % 2 != 0) {
-				console.log("invalid lines:", c, c.lines.filter(p => pointMap[p] == null));
-				return;
+			let points = new THREE.Points(geometry, this.starMaterial);
+			this.el.setObject3D('mesh', points);
+
+			if (this.data.constellationSrc != '') {
+				this._loadConstellations(this.data.constellationSrc, points, pointMap);
 			}
-			c.lines.forEach(p => geometry.vertices.push(points.geometry.vertices[pointMap[p]]));
 		});
-		let line = new THREE.LineSegments(geometry, material);
-		this.el.object3D.add(line);
-		this.constellations = line;
-		this.constellations.visible = this.data.constellation;
+	},
+	_loadConstellations: function (src, points, pointMap) {
+		getJson(src, (constellations) => {
+			if (!constellations) return;
+			var material = new THREE.LineBasicMaterial({
+				color: 0x002244,
+				fog: false
+			});
+			var geometry = new THREE.Geometry();
+			constellations.forEach((c) => {
+				for (let i = 0; i < c.lines.length; i++) {
+					if (pointMap[c.lines[i]] == null) {
+						console.log("star not found:", c, c.lines[i]);
+						c.lines.splice(i - i % 2, 2);
+						i = i - i % 2 - 1;
+						continue;
+					}
+				}
+				if (!c.lines.every(p => pointMap[p] != null) || c.lines.length % 2 != 0) {
+					console.log("invalid lines:", c, c.lines.filter(p => pointMap[p] == null));
+					return;
+				}
+				c.lines.forEach(p => geometry.vertices.push(points.geometry.vertices[pointMap[p]]));
+			});
+			let line = new THREE.LineSegments(geometry, material);
+			this.el.object3D.add(line);
+			this.constellations = line;
+			this.constellations.visible = this.data.constellation;
+		});
 	}
 });
