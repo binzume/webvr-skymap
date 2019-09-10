@@ -9,7 +9,6 @@
   <script src="https://binzume.github.io/aframe-xylayout/aframe-xylayout.js?4"></script>
   <script src="https://binzume.github.io/aframe-xylayout/aframe-window.js?4"></script>
   <script src="js/celestial-sphere.js"></script>
-  <script src="js/utils.js"></script>
   <script src="js/skymap.js?1"></script>
   <script src="3rdparty/aframe-material.js"></script>
 </head>
@@ -17,7 +16,7 @@
 <body style="background-color: black; color:white;">
   <a-scene fog="type: linear; color: #000; near:10;far:50;" cursor="rayOrigin: mouse; fuse:false"
     raycaster="objects:.collidable,.clickable,a-rounded;far:Infinity" renderer="antialias:true;">
-    <a-sky menu-on-click="template:mainMenuTemplate;offsetY:-1"></a-sky>
+    <a-sky class="collidable" menu-on-click="template:mainMenuTemplate;offsetY:-1"></a-sky>
 
     <a-assets>
       <!-- menu pane -->
@@ -66,7 +65,7 @@
       </script>
     </a-assets>
 
-    <a-entity position="0 0 0" celestial-sphere="src:data/hip_stars.json?;updateIntervalMs:100;speed:100;constellationSrc:data/hip_constellations.json"></a-entity>
+    <a-entity position="0 0 0" celestial-sphere="src:data/hip_stars.json?;updateIntervalMs:100;speed:1;constellationSrc:data/hip_constellations.json"></a-entity>
 
     <a-entity id="camera-rig" position-controls="arrowkeys:rotation">
       <a-camera position="0 1.5 0" wasd-controls-enabled look-controls="enabled:false"></a-camera>
