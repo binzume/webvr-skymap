@@ -12,7 +12,7 @@ function instantiate(id, parent) {
 
 AFRAME.registerComponent('position-controls', {
 	schema: {
-		arrowKeys: { default: "" },
+		arrowkeys: { default: "" },
 		rotationSpeed: { default: 0.1 },
 		speed: { default: 0.1 }
 	},
@@ -133,20 +133,47 @@ AFRAME.registerComponent('main-menu', {
 		this._getEl('constellations').addEventListener('click', (e) => {
 			sphereEl.setAttribute("celestial-sphere", "constellation", !sphereEl.getAttribute("celestial-sphere").constellation);
 		});
-		this._getEl('speed-x1').addEventListener('click', (e) => {
-			sphereEl.setAttribute("celestial-sphere", "speed", 1.0);
-		});
-		this._getEl('speed-x60').addEventListener('click', (e) => {
-			sphereEl.setAttribute("celestial-sphere", "speed", 60.0);
-		});
-		this._getEl('speed-x300').addEventListener('click', (e) => {
-			sphereEl.setAttribute("celestial-sphere", "speed", 300.0);
-		});
-		this._getEl('speed-x3600').addEventListener('click', (e) => {
-			sphereEl.setAttribute("celestial-sphere", "speed", 3600.0);
+		this._getEl('speed').addEventListener('change', ev => {
+			sphereEl.setAttribute("celestial-sphere", "speed", [1, 60, 300, 3600][ev.detail.index]);
 		});
 		this._getEl('time-now').addEventListener('click', (e) => {
 			sphereEl.setAttribute("celestial-sphere", "timeMs", Date.now());
+		});
+		this._getEl('time-py').addEventListener('click', (e) => {
+			let d = new Date(sphereEl.getAttribute("celestial-sphere").timeMs);
+			d.setFullYear(d.getFullYear() + 1);
+			sphereEl.setAttribute("celestial-sphere", "timeMs", d.getTime());
+		});
+		this._getEl('time-ny').addEventListener('click', (e) => {
+			let d = new Date(sphereEl.getAttribute("celestial-sphere").timeMs);
+			d.setFullYear(d.getFullYear() - 1);
+			sphereEl.setAttribute("celestial-sphere", "timeMs", d.getTime());
+		});
+		this._getEl('time-pm').addEventListener('click', (e) => {
+			let d = new Date(sphereEl.getAttribute("celestial-sphere").timeMs);
+			d.setMonth(d.getMonth() + 1);
+			sphereEl.setAttribute("celestial-sphere", "timeMs", d.getTime());
+		});
+		this._getEl('time-nm').addEventListener('click', (e) => {
+			let d = new Date(sphereEl.getAttribute("celestial-sphere").timeMs);
+			d.setMonth(d.getMonth() - 1);
+			sphereEl.setAttribute("celestial-sphere", "timeMs", d.getTime());
+		});
+		this._getEl('time-pd').addEventListener('click', (e) => {
+			let t = sphereEl.getAttribute("celestial-sphere").timeMs + 86400 * 1000;
+			sphereEl.setAttribute("celestial-sphere", "timeMs", t);
+		});
+		this._getEl('time-nd').addEventListener('click', (e) => {
+			let t = sphereEl.getAttribute("celestial-sphere").timeMs - 86400 * 1000;
+			sphereEl.setAttribute("celestial-sphere", "timeMs", t);
+		});
+		this._getEl('time-ph').addEventListener('click', (e) => {
+			let t = sphereEl.getAttribute("celestial-sphere").timeMs + 3600 * 1000;
+			sphereEl.setAttribute("celestial-sphere", "timeMs", t);
+		});
+		this._getEl('time-nh').addEventListener('click', (e) => {
+			let t = sphereEl.getAttribute("celestial-sphere").timeMs - 3600 * 1000;
+			sphereEl.setAttribute("celestial-sphere", "timeMs", t);
 		});
 		this.timer = setInterval(() => {
 			let t = new Date(sphereEl.getAttribute("celestial-sphere").timeMs);
