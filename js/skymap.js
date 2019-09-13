@@ -133,6 +133,9 @@ AFRAME.registerComponent('main-menu', {
 		this._getEl('constellations').addEventListener('click', (e) => {
 			sphereEl.setAttribute("celestial-sphere", "constellation", !sphereEl.getAttribute("celestial-sphere").constellation);
 		});
+		this._getEl('drawgrid').addEventListener('click', (e) => {
+			sphereEl.setAttribute("celestial-sphere", "grid", !sphereEl.getAttribute("celestial-sphere").grid);
+		});
 		this._getEl('speed').addEventListener('change', ev => {
 			sphereEl.setAttribute("celestial-sphere", "speed", [1, 60, 300, 3600][ev.detail.index]);
 		});

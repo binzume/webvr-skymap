@@ -17,6 +17,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		magOffset: { type: 'number', default: -0.5 },
 		radius: { type: 'number', default: 4000 },
 		constellationSrc: { type: 'string', default: "" },
+		solarsystem: { type: 'boolean', default: true },
 		constellation: { type: 'boolean', default: false },
 		grid: { type: 'boolean', default: false }
 	},
@@ -68,12 +69,16 @@ AFRAME.registerComponent('celestial-sphere', {
 			earth: {
 				a: 1.00000261,
 				l0: 100.46645683 * Math.PI / 180, l1: 129597742.283429 / 3600 * Math.PI / 180,
-				at: 84381.406 / 3600 * Math.PI / 180
+				ap1: 5038.481507 / 3600 * Math.PI / 180, ap2: -1.0790069 / 3600 * Math.PI / 180,  // from P03 model
+				at0: 84381.406 / 3600 * Math.PI / 180, at1: -46.836769 / 3600 * Math.PI / 180, at2: -0.0001831 / 3600 * Math.PI / 180
 			}
 		};
 
-		this._makeSun();
-		this._makeMoon();
+		if (this.data.solarsystem) {
+			this.el.setObject3D('solar', new THREE.Object3D());
+			this._makeSun();
+			this._makeMoon();
+		}
 		if (this.data.src !== '') {
 			this._loadStars(this.data.src);
 		}
@@ -97,6 +102,24 @@ AFRAME.registerComponent('celestial-sphere', {
 		let time = this.data.timeMs / 1000.0 - this.epoch;
 		let T = time / (36525 * 86400);
 		let d = (Math.PI + this.oe.earth.l0 + this.oe.earth.l1 * T) % (2 * Math.PI);
+		let eps = this.oe.earth.at0 + this.oe.earth.at1 * T + this.oe.earth.at2 * T * T;
+		let psi = this.oe.earth.ap1 * T + this.oe.earth.ap2 * T * T;
+		const axisY = new THREE.Vector3(0, 1, 0);
+		const axisZ = new THREE.Vector3(0, 0, 1);
+
+		let stars = this.el.getObject3D('mesh');
+		if (stars) {
+			stars.setRotationFromAxisAngle(axisZ, -eps);
+			stars.rotateOnAxis(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
+			// TODO...
+			if (this.constellations) {
+				this.constellations.quaternion.copy(stars.quaternion);
+			}
+			let solar = this.el.getObject3D('solar');
+			if (solar) {
+				solar.quaternion.copy(stars.quaternion);
+			}
+		}
 
 		let er = d + (time % 86400 / 86400 + this.data.lng / 360) * 2 * Math.PI + Math.PI;
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), -er, 0);
@@ -113,14 +136,10 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.gridLastUpdated = 0;
 		}
 		if (this.sun) {
-			const axisZ = new THREE.Vector3(0, 0, 1);
-			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, this.oe.earth.at);
+			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, eps);
 			this.sun.setRotationFromAxisAngle(oev, d);
 		}
 		if (this.moon) {
-			const axisY = new THREE.Vector3(0, 1, 0);
-			const axisZ = new THREE.Vector3(0, 0, 1);
-
 			let params = this.oe.moon;
 			params.a = this.data.radius * 0.98;
 
@@ -128,11 +147,11 @@ AFRAME.registerComponent('celestial-sphere', {
 			let M = L - (params.p0 + params.p1 * T);
 			let mo = params.o0 + params.o1 * T;
 			let md = 2 * params.e * Math.sin(M);
-			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ, this.oe.earth.at);
+			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ, eps);
 			let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(params.a);
 			let pos = st.applyAxisAngle(omv, L + md);
 
-			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, this.oe.earth.at);
+			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, eps);
 			this.moon.position.copy(pos);
 			this.moon.material.uniforms.light.value = axisZ.clone().applyAxisAngle(oev, d);
 		}
@@ -143,12 +162,14 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 		let time = this.data.timeMs / 1000.0 - this.epoch;
 		let T = time / (36525 * 86400);
+		let eps = this.oe.earth.at0 + this.oe.earth.at1 * T + this.oe.earth.at2 * T * T;
+		let psi = this.oe.earth.ap1 * T + this.oe.earth.ap2 * T * T;
 
 		this.gridLastUpdated = this.data.timeMs;
 		let geometry = new THREE.Geometry();
 		const axisY = new THREE.Vector3(0, 1, 0);
 		const axisZ = new THREE.Vector3(0, 0, 1);
-		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, this.oe.earth.at);
+		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
 		var doddedCircle = function (geometry, init, axis, n, color) {
 			for (let i = 0; i < n; i++) {
 				geometry.vertices.push(init.clone().applyAxisAngle(axis, Math.PI * 2 * i / n));
@@ -156,7 +177,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			}
 		};
 		doddedCircle(geometry, new THREE.Vector3(0, 0, this.data.radius), axisY, d, new THREE.Color(0.8, 0, 0));
-		doddedCircle(geometry, new THREE.Vector3(0, 0, this.data.radius), oev, d, new THREE.Color(0.8, 0.8, 0.4));
+		doddedCircle(geometry, new THREE.Vector3(0, 0, this.data.radius).applyAxisAngle(axisY, -psi), oev, d, new THREE.Color(0.8, 0.8, 0.4));
 
 		var v = axisZ.clone();
 		for (var i = 0; i < 6; i++) {
@@ -171,7 +192,7 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		let params = this.oe.moon;
 		let mo = params.o0 + params.o1 * T;
-		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ, this.oe.earth.at);
+		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
 		let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius);
 		doddedCircle(geometry, st, omv, 270, new THREE.Color(0.6, 0.5, 0.1));
 
@@ -188,7 +209,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		sun.position.z = this.data.radius * 0.99;
 		let sunC = new THREE.Object3D();
 		sunC.add(sun);
-		this.el.object3D.add(sunC);
+		this.el.getObject3D('solar').add(sunC);
 		this.sun = sunC;
 	},
 	_makeMoon: function () {
@@ -233,7 +254,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		let r = this.data.radius * 0.99 * Math.PI * 1.03 / 360;
 		let geometry = new THREE.SphereGeometry(r, 32, 32);
 		let moon = new THREE.Mesh(geometry, material);
-		this.el.object3D.add(moon);
+		this.el.getObject3D('solar').add(moon);
 		this.moon = moon;
 	},
 	_loadStars: async function (src) {
