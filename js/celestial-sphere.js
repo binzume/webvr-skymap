@@ -165,8 +165,14 @@ AFRAME.registerComponent('celestial-sphere', {
 		if (!this.constellations || !this.constellationBounds) {
 			return;
 		}
-		let c = this.constellations[name] || { lineStart: 0, lineEnd: Infinity };
+		let c = this.constellations[name] || { lineStart: 0, lineCount: Infinity };
 		this.constellationLines.geometry.setDrawRange(c.lineStart, c.lineCount * 2);
+	},
+	getCoord: function (direction) {
+		let q = this.el.object3D.getWorldQuaternion(new THREE.Quaternion());
+		let d = direction.clone().applyQuaternion(q.inverse());
+		let l = Math.sqrt(d.x * d.x + d.z * d.z);
+		return [(Math.atan2(d.x, d.z) * 180 / Math.PI + 360) % 360, Math.atan2(d.y, l) * 180 / Math.PI];
 	},
 	_calc4: function (param, t) {
 		return param[0] + (param[1] + (param[2] + param[3] * t) * t) * t;

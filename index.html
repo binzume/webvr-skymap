@@ -23,6 +23,7 @@
       <script id="mainMenuTemplate" type="text/html">
         <a-xywindow main-menu position="0 5 -8" title="Menu" width="4.5" height="0.6" align-items="stretch">
           <a-xylayout height="0.6" direction="horizontal" justify-items="stretch">
+            <a-xybutton name="selector" label="*" width="1" height="0.6"></a-xybutton>
             <a-xybutton name="constellations" label="Lines" width="1.2" height="0.6"></a-xybutton>
             <a-xybutton name="drawgrid" label="Grid" width="1.2" height="0.6"></a-xybutton>
             <a-xybutton name="drawsol" label="Solar" width="1.2" height="0.6"></a-xybutton>
@@ -79,14 +80,13 @@
       <a-camera position="0 1.5 0" wasd-controls-enabled look-controls="enabled:false"></a-camera>
       <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
       <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
+      <!-- kbd -->
+      <a-entity position="-1.4 0.3 -2">
+        <a-keyboard physical-keyboard="true"></a-keyboard>
+      </a-entity>
     </a-entity>
 
     <a-plane id="ground" material="shader:gridground" rotation="-90 0 0" position="0 0 0" width="1000" height="1000" color="#111188"></a-plane>
-
-    <!-- kbd -->
-    <a-entity position="-1.4 0.5 -2">
-      <a-keyboard physical-keyboard="true"></a-keyboard>
-    </a-entity>
   </a-scene>
 </body>
 
