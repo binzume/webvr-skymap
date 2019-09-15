@@ -71,7 +71,6 @@ AFRAME.registerComponent('celestial-sphere', {
 			earth: {
 				a: 1.00000261, e: 0.0167086342, i: 46.997289 / 3600 * Math.PI / 180,
 				l: [100.46645683 * 3600, 129597742.283429, 0.0204411, 0],
-				// P03 precession model
 				psi: [0, 5038.481507, -1.0790069, -0.00114045, 0.000132851, -0.0000000951],
 				eps: [84381.406, -46.836769, -0.0001831, 0.0020034, -5.76e-7, -4.34e-8]
 			}
@@ -111,8 +110,8 @@ AFRAME.registerComponent('celestial-sphere', {
 			stars.setRotationFromAxisAngle(axisZ, -eps);
 			stars.rotateOnAxis(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
 			// TODO...
-			if (this.constellations) {
-				this.constellations.quaternion.copy(stars.quaternion);
+			if (this.constellationLines) {
+				this.constellationLines.quaternion.copy(stars.quaternion);
 			}
 		}
 
@@ -138,8 +137,8 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		let er = d + (time % 86400 / 86400 + this.data.lng / 360) * 2 * Math.PI + Math.PI;
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), -er, 0);
-		if (this.constellations) {
-			this.constellations.visible = this.data.constellation;
+		if (this.constellationLines) {
+			this.constellationLines.visible = this.data.constellation;
 		}
 		if (this.data.grid) {
 			if (Math.abs(this.gridLastUpdated - this.data.timeMs) > 3600000) {
@@ -150,6 +149,24 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.gridPoints = null;
 			this.gridLastUpdated = 0;
 		}
+	},
+	getConstellation: function (raycaster) {
+		if (!this.constellations || !this.constellationBounds) {
+			return null;
+		}
+		let intersecs = raycaster.intersectObject(this.constellationBounds);
+		if (intersecs.length == 0) {
+			return null;
+		}
+		let n = this.constellationMaterialIndices[intersecs[0].face.materialIndex];
+		return n && this.constellations[n];
+	},
+	selectConstellation: function (name) {
+		if (!this.constellations || !this.constellationBounds) {
+			return;
+		}
+		let c = this.constellations[name] || { lineStart: 0, lineEnd: Infinity };
+		this.constellationLines.geometry.setDrawRange(c.lineStart, c.lineCount * 2);
 	},
 	_calc4: function (param, t) {
 		return param[0] + (param[1] + (param[2] + param[3] * t) * t) * t;
@@ -269,9 +286,9 @@ AFRAME.registerComponent('celestial-sphere', {
 		for (let i = 0; i < result.length; i++) {
 			var star = result[i];
 
-			let v = new THREE.Vector3(0, 0, this.data.radius);
-			v.applyAxisAngle(axisX, -star.dec);
-			v.applyAxisAngle(axisY, star.ra);
+			let v = new THREE.Vector3(0, 0, this.data.radius)
+				.applyAxisAngle(axisX, -star.dec)
+				.applyAxisAngle(axisY, star.ra);
 
 			let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
 			let t = 4600 * ((1 / ((0.92 * star.bv) + 1.7)) + (1 / ((0.92 * star.bv) + 0.62)));
@@ -296,12 +313,17 @@ AFRAME.registerComponent('celestial-sphere', {
 		let response = await fetch(src);
 		let constellations = await response.json();
 
-		var material = new THREE.LineBasicMaterial({
+		let material = new THREE.LineBasicMaterial({
 			color: 0x002244,
 			fog: false
 		});
-		var geometry = new THREE.Geometry();
+		let geometry = new THREE.BufferGeometry();
+		let boundaryShapes = [];
+		let materialIndexToName = [];
+		this.constellations = {};
+		let lineVerts = [];
 		constellations.forEach((c) => {
+			this.constellations[c.name] = c;
 			for (let i = 0; i < c.lines.length; i++) {
 				if (pointMap[c.lines[i]] == null) {
 					console.log("star not found:", c, c.lines[i]);
@@ -314,11 +336,64 @@ AFRAME.registerComponent('celestial-sphere', {
 				console.log("invalid lines:", c, c.lines.filter(p => pointMap[p] == null));
 				return;
 			}
-			c.lines.forEach(p => geometry.vertices.push(points.geometry.vertices[pointMap[p]]));
+			this.constellations[c.name].lineStart = lineVerts.length / 3;
+			this.constellations[c.name].lineCount = c.lines.length / 2;
+			c.lines.forEach(p => {
+				points.geometry.vertices[pointMap[p]].toArray(lineVerts, lineVerts.length);
+			});
+
+			c.boundary.forEach(b => {
+				// b : [ra,dec,ra,dec,...]
+				let shape = new THREE.Shape();
+				let lastRa = b[0];
+				for (let i = 0; i < b.length / 2; i++) {
+					let ra = b[i * 2], dec = b[i * 2 + 1];
+					if (ra - lastRa > 180) {
+						ra -= 360;
+					} else if (ra - lastRa < -180) {
+						ra += 360;
+					}
+					if (i == 0) {
+						shape.moveTo(ra, dec);
+					} else {
+						shape.lineTo(ra, dec);
+					}
+					lastRa = ra;
+				}
+				// UMi, Oct...
+				if (b[0] - lastRa < -180) {
+					shape.lineTo(lastRa, b[1] > 0 ? 90 : -90);
+					shape.lineTo(b[0], b[1] > 0 ? 90 : -90);
+				}
+				materialIndexToName.push(c.name);
+				boundaryShapes.push(shape);
+			});
 		});
+
+		geometry.addAttribute('position', new THREE.BufferAttribute(Float32Array.from(lineVerts), 3));
+
 		let line = new THREE.LineSegments(geometry, material);
 		this.el.object3D.add(line);
-		this.constellations = line;
-		this.constellations.visible = this.data.constellation;
+		this.constellationLines = line;
+		this.constellationLines.visible = this.data.constellation;
+		this.constellationMaterialIndices = materialIndexToName;
+
+		let boundaryGeometry = new THREE.ShapeGeometry(boundaryShapes);
+		const axisY = new THREE.Vector3(0, 1, 0);
+		const axisX = new THREE.Vector3(1, 0, 0);
+		boundaryGeometry.vertices.forEach((v) => {
+			let ra = v.x, dec = v.y;
+			v.set(0, 0, this.data.radius)
+				.applyAxisAngle(axisX, -dec * Math.PI / 180)
+				.applyAxisAngle(axisY, ra * Math.PI / 180);
+		});
+		let boundaryMaterial = new THREE.MeshBasicMaterial({
+			wireframe: true, color: 0xff0000, visible: false, fog: false, side: THREE.BackSide
+		});
+		let bounds = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
+		bounds.scale.set(0.1, 0.1, 0.1);
+		bounds.position.set(-18, 0, -8);
+		this.el.object3D.add(bounds);
+		this.constellationBounds = bounds;
 	}
 });
