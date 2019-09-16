@@ -60,20 +60,66 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.gridPoints = null;
 		this.epoch = 946727935.816; // J2000.0
 		this.oe = {
-			moon: {
-				a: 1, e: 0.055545526, i: 5.15668983 * Math.PI / 180,
-				l: [218.31664563 * 3600, 1732559343.48470, -6.3910, 0.006588],
-				o: [125.04455501 * 3600, -6967919.3631, 6.3602, 0.007625],
-				p: [83.35324312 * 3600, 14643420.2669, -38.2702, -0.045047],
-				o0: 125.04455501 * Math.PI / 180, o1: -6967919.3631 / 3600 * Math.PI / 180,
-				p0: 83.35324312 * Math.PI / 180, p1: 14643420.2669 / 3600 * Math.PI / 180
-			},
 			earth: {
-				a: 1.00000261, e: 0.0167086342, i: 46.997289 / 3600 * Math.PI / 180,
-				l: [100.46645683 * 3600, 129597742.283429, 0.0204411, 0],
+				name: "Earth", color: 0x0000ff, size: 6371,
+				a: [1.00000261, 5.62e-06], e: [0.01671123, -4.392e-05], i: [-1.531e-05, -0.01294668],
+				l: [100.46645683, 129597742.283429 / 3600, 0.0204411 / 3600, 0],
 				psi: [0, 5038.481507, -1.0790069, -0.00114045, 0.000132851, -0.0000000951],
 				eps: [84381.406, -46.836769, -0.0001831, 0.0020034, -5.76e-7, -4.34e-8]
-			}
+			},
+			moon: {
+				name: "Moon", color: 0x888877, size: 1737.1,
+				a: [0.0025, 0], e: 0.055545526, i: [5.15668983, -0.00008 / 3600],
+				l: [218.31664563, 1732559343.48470 / 3600, -6.3910 / 3600, 0.006588 / 3600],
+				o: [125.04455501, -6967919.3631 / 3600, 6.3602 / 3600, 0.007625 / 3600],
+				p: [83.35324312, 14643420.2669 / 3600, -38.2702 / 3600, -0.045047 / 3600]
+			},
+			planets: [
+				//{
+				//	name: "Sun", color: 0xffffee, size: 696000,
+				//	a: [0, 0], e: [0, 0], i: [0, 0], l: [0, 0], p: [0, 0], o: [0, 0]
+				//},
+				{
+					name: "Mercury", color: 0x998855, size: 2439.7,
+					a: [0.38709927, 3.7e-07], e: [0.20563593, 1.906e-05], i: [7.00497902, -0.00594749],
+					l: [252.2503235, 149472.67411175], p: [77.45779628, 0.16047689], o: [48.33076593, -0.12534081]
+				},
+				{
+					name: "Venus", color: 0xffeecc, size: 6051.8,
+					a: [0.72333566, 3.9e-06], e: [0.00677672, -4.107e-05], i: [3.39467605, -0.0007889],
+					l: [181.9790995, 58517.81538729], p: [131.60246718, 0.00268329], o: [76.67984255, -0.27769418]
+				},
+				{
+					name: "Mars", color: 0xaa5544, size: 3390.0,
+					a: [1.52371034, 1.847e-05], e: [0.0933941, 7.882e-05], i: [1.84969142, -0.00813131],
+					l: [-4.55343205, 19140.30268499], p: [-23.94362959, 0.44441088], o: [49.55953891, -0.29257343]
+				},
+				{
+					name: "Jupiter", color: 0xffcc99, size: 69911,
+					a: [5.202887, -0.00011607], e: [0.04838624, -0.00013253], i: [1.30439695, -0.00183714],
+					l: [34.39644051, 3034.74612775], p: [14.72847983, 0.21252668], o: [100.47390909, 0.20469106]
+				},
+				{
+					name: "Saturn", size: 58232,
+					a: [9.53667594, -0.0012506], e: [0.05386179, -0.00050991], i: [2.48599187, 0.00193609],
+					l: [49.95424423, 1222.49362201], p: [92.59887831, -0.41897216], o: [113.66242448, -0.28867794]
+				},
+				{
+					name: "Uranus", color: 0xccddff, size: 25362,
+					a: [19.18916464, -0.00196176], e: [0.04725744, -4.397e-05], i: [0.77263783, -0.00242939],
+					l: [313.23810451, 428.48202785], p: [170.9542763, 0.40805281], o: [74.01692503, 0.04240589]
+				},
+				{
+					name: "Neptune", color: 0x7777ff, size: 24622,
+					a: [30.06992276, 0.00026291], e: [0.00859048, 5.105e-05], i: [1.77004347, 0.00035372],
+					l: [-55.12002969, 218.45945325], p: [44.96476227, -0.32241464], o: [131.78422574, -0.00508664]
+				},
+				{
+					name: "Pluto", size: 1185,
+					a: [39.48211675, -0.00031596], e: [0.2488273, 5.17e-05], i: [17.14001206, 4.818e-05],
+					l: [238.92903833, 145.20780515], p: [224.06891629, -0.04062942], o: [110.30393684, -0.01183482]
+				}
+			]
 		};
 
 		this._makeSolarSystem();
@@ -98,12 +144,13 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		const axisY = new THREE.Vector3(0, 1, 0);
 		const axisZ = new THREE.Vector3(0, 0, 1);
-		const secToRad = Math.PI / 180 / 3600;
+		const degToRad = Math.PI / 180;
+
 		let time = this.data.timeMs / 1000.0 - this.epoch;
 		let T = time / (36525 * 86400);
-		let eps = this._calc4(this.oe.earth.eps, T) * secToRad;
-		let psi = this._calc4(this.oe.earth.psi, T) * secToRad;
-		let d = (this._calc4(this.oe.earth.l, T) * secToRad + Math.PI) % (2 * Math.PI);
+		let eps = this._calc4(this.oe.earth.eps, T) * degToRad / 3600;
+		let psi = this._calc4(this.oe.earth.psi, T) * degToRad / 3600;
+		let d = this._calc4(this.oe.earth.l, T) * degToRad % (2 * Math.PI);
 
 		let stars = this.el.getObject3D('mesh');
 		if (stars) {
@@ -115,27 +162,49 @@ AFRAME.registerComponent('celestial-sphere', {
 			}
 		}
 
-		this.solarSystem.visible = stars && this.data.solarsystem;
+		this.solarSystem.visible = this.data.solarsystem;
 		if (this.solarSystem.visible) {
 			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, eps);
 			this.solarSystem.setRotationFromAxisAngle(axisZ, -eps);
 			this.solarSystem.rotateOnAxis(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
 			this.solarSystem.rotateOnAxis(oev, d);
 
-			// moon
-			let params = this.oe.moon;
-			let L = this._calc4(params.l, T) * secToRad;
-			let M = L - this._calc4(params.p, T) * secToRad;
-			let mo = this._calc4(params.o, T) * secToRad;
-			let md = 2 * params.e * Math.sin(M);
-			let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ, eps);
-			let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius * 0.98);
-			let pos = st.applyAxisAngle(omv, L + md).applyAxisAngle(oev, -d);
+			{
+				// moon
+				let params = this.oe.moon;
+				let l = this._calc4(params.l, T) * degToRad;
+				let m = l - this._calc4(params.p, T) * degToRad;
+				let o = this._calc4(params.o, T) * degToRad;
+				let i = this._calc2(params.i, T) * degToRad;
+				let md = 2 * params.e * Math.sin(m);
+				let ov = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, i).applyAxisAngle(axisY, o).applyAxisAngle(axisZ, eps);
+				// let pos = new THREE.Vector3(0, 0, 1)
+				//	.applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md).applyAxisAngle(axisZ, eps).applyAxisAngle(oev, -d);
+				let pos = new THREE.Vector3(1, 0, 0).cross(ov).applyAxisAngle(ov, l + md).applyAxisAngle(oev, -d);
+				this.moon.position.copy(pos.multiplyScalar(this.data.radius * 0.98));
+			}
 
-			this.moon.position.copy(pos);
+			// planets
+			let earthPos = new THREE.Vector3(0, 0, this._calc2(this.oe.earth.a, T)).applyAxisAngle(axisY, d);
+			for (let p = 0; p < this.oe.planets.length; p++) {
+				let params = this.oe.planets[p];
+				let l = this._calc2(params.l, T) * degToRad;
+				let m = l - this._calc2(params.p, T) * degToRad;
+				let o = this._calc2(params.o, T) * degToRad;
+				let i = this._calc2(params.i, T) * degToRad;
+				let md = 2 * this._calc2(params.e, T) * Math.sin(m);
+				let ov = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, i).applyAxisAngle(axisY, o);
+				let pos = new THREE.Vector3(0, 0, this._calc2(params.a, T))
+					.applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md);
+				let rpos = pos.clone().sub(earthPos).applyAxisAngle(axisY, -d).applyAxisAngle(axisZ, eps);
+
+				let sz = Math.min(0.0002 / rpos.length(), this.data.radius * Math.PI / 180 * 0.002 / params.size);
+				this.planets[p].scale.set(sz, sz, sz);
+				this.planets[p].position.copy(rpos.normalize().multiplyScalar(this.data.radius * 0.98));
+			}
 		}
 
-		let er = d + (time % 86400 / 86400 + this.data.lng / 360) * 2 * Math.PI + Math.PI;
+		let er = d + (time % 86400 / 86400 + this.data.lng / 360) * 2 * Math.PI;
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), -er, 0);
 		if (this.constellationLines) {
 			this.constellationLines.visible = this.data.constellation;
@@ -177,15 +246,18 @@ AFRAME.registerComponent('celestial-sphere', {
 	_calc4: function (param, t) {
 		return param[0] + (param[1] + (param[2] + param[3] * t) * t) * t;
 	},
+	_calc2: function (param, t) {
+		return param[0] + param[1] * t;
+	},
 	_makeGrid: function (d) {
 		if (this.gridPoints) {
 			this.el.object3D.remove(this.gridPoints);
 		}
-		const secToRad = Math.PI / 180 / 3600;
+		const degToRad = Math.PI / 180;
 		let time = this.data.timeMs / 1000.0 - this.epoch;
 		let T = time / (36525 * 86400);
-		let eps = this._calc4(this.oe.earth.eps, T) * secToRad;
-		let psi = this._calc4(this.oe.earth.psi, T) * secToRad;
+		let eps = this._calc4(this.oe.earth.eps, T) * degToRad / 3600;
+		let psi = this._calc4(this.oe.earth.psi, T) * degToRad / 3600;
 
 		this.gridLastUpdated = this.data.timeMs;
 		let geometry = new THREE.Geometry();
@@ -212,11 +284,14 @@ AFRAME.registerComponent('celestial-sphere', {
 			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, -Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.4));
 		}
 
+		/*
 		let params = this.oe.moon;
-		let mo = params.o0 + params.o1 * T;
-		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, params.i).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
+		let mo = this._calc4(params.o, T) * degToRad;
+		let mi = this._calc2(params.i, T) * degToRad;
+		let omv = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, mi).applyAxisAngle(axisY, mo).applyAxisAngle(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
 		let st = new THREE.Vector3(1, 0, 0).cross(omv).multiplyScalar(this.data.radius);
-		// doddedCircle(geometry, st, omv, 270, new THREE.Color(0.6, 0.5, 0.1));
+		doddedCircle(geometry, st, omv, 270, new THREE.Color(0.6, 0.5, 0.1));
+		*/
 
 		let points = new THREE.Points(geometry, this.starMaterial);
 		this.el.object3D.add(points);
@@ -224,23 +299,35 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.gridPoints.visible = this.data.grid;
 	},
 	_makeSolarSystem: function () {
-		this.solarSystem = new THREE.Object3D();
+		this.solarSystem = new THREE.Group();
 		this.el.setObject3D('solar', this.solarSystem);
 		this._makeSun();
 		this._makeMoon();
+
+		this.planets = [];
+		for (let p = 0; p < this.oe.planets.length; p++) {
+			let r = this.oe.planets[p].size * this.data.radius * Math.PI / 360;
+			let geometry = new THREE.SphereGeometry(r, 32, 32);
+			let material = new THREE.MeshBasicMaterial({
+				color: this.oe.planets[p].color || 0xaaaaaa, fog: false
+			});
+			let sphere = new THREE.Mesh(geometry, material);
+			this.solarSystem.add(sphere);
+			this.planets[p] = sphere;
+		}
 	},
 	_makeSun: function () {
 		let r = this.data.radius * 0.99 * Math.PI * 1.06 / 360;
 		let geometry = new THREE.SphereGeometry(r, 32, 32);
 		let material = new THREE.MeshBasicMaterial({ color: 0xffffee, fog: false });
 		let sun = new THREE.Mesh(geometry, material);
-		sun.position.z = this.data.radius * 0.99;
+		sun.position.z = -this.data.radius * 0.99;
 		this.solarSystem.add(sun);
 	},
 	_makeMoon: function () {
 		let uniforms = {
-			color: { value: new THREE.Color(0x888877) },
-			light: { value: new THREE.Vector3(0, 0, 1) }
+			color: { value: new THREE.Color(this.oe.moon.color) },
+			light: { value: new THREE.Vector3(0, 0, -1) }
 		};
 		var shaderParams = {
 			uniforms: THREE.UniformsUtils.merge([uniforms, THREE.UniformsLib.fog]),
@@ -268,7 +355,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			#include <color_pars_fragment>
 			#include <fog_pars_fragment>
 			void main() {
-				vec4 diffuseColor = vec4( color * clamp(dot(light, vNormal) * 4.0,0.1,1.0), 1.0 );
+				vec4 diffuseColor = vec4( color * clamp(dot(light, vNormal) * 4.0,0.05,1.0), 1.0 );
 				#include <color_fragment>
 				gl_FragColor = diffuseColor;
 				#include <fog_fragment>

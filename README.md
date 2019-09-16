@@ -14,13 +14,14 @@ DEMO: https://binzume.github.io/webvr-skymap/
 - 恒星のデータはヒッパルコス星表を使っています
   - https://heasarc.gsfc.nasa.gov/db-perl/W3Browse/w3table.pl?tablehead=name%3Dhipparcos&Action=More+Options
   - 上のサイトから6.5等級未満のものを取得しました
+- 惑星の軌道要素は https://ssd.jpl.nasa.gov/?planet_pos
 - 星座線は http://astronomy.webcrow.jp/hip/
 - 地球の歳差運動は P03 モデルのパラメータで計算
 
 ## TODO
 
+- まともなUI
 - 星座名・星座境界
-- 惑星の表示
 
 # License
 

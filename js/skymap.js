@@ -53,8 +53,11 @@ AFRAME.registerComponent('position-controls', {
 			});
 		});
 		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('axismove', ev => {
-			this.el.object3D.translateX(ev.detail.axis[0] * this.data.speed);
-			this.el.object3D.translateZ(ev.detail.axis[1] * this.data.speed);
+			let speedFactor = 0.1;
+			let direction = ev.target.components.raycaster.raycaster.ray.direction;
+			let rot = Math.atan2(direction.x, direction.z);
+			let v = new THREE.Vector3(-ev.detail.axis[0], 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0,1,0), rot);
+			this.el.object3D.position.add(v.multiplyScalar(speedFactor));
 		}));
 	}
 });
