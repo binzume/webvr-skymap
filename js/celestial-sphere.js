@@ -14,7 +14,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		updateIntervalMs: { type: 'number', default: -1 },
 		speed: { type: 'number', default: 1 },
 		magFactor: { type: 'number', default: 0.65 },
-		magOffset: { type: 'number', default: -0.5 },
+		magOffset: { type: 'number', default: -1.0 },
 		radius: { type: 'number', default: 4000 },
 		constellationSrc: { type: 'string', default: "" },
 		solarsystem: { type: 'boolean', default: true },
@@ -22,39 +22,6 @@ AFRAME.registerComponent('celestial-sphere', {
 		grid: { type: 'boolean', default: false }
 	},
 	init: function () {
-		var starMaterialParams = {
-			uniforms: THREE.ShaderLib.points.uniforms,
-			vertexShader: `
-			uniform float size;
-			uniform float scale;
-			#include <common>
-			#include <color_pars_vertex>
-			void main() {
-				#include <color_vertex>
-				#include <begin_vertex>
-				#include <project_vertex>
-				gl_PointSize = size;
-			}`,
-			fragmentShader: `
-			uniform vec3 diffuse;
-			uniform float opacity;
-			#include <common>
-			#include <color_pars_fragment>
-			void main() {
-				vec3 outgoingLight = vec3( 0.0 );
-				vec4 diffuseColor = vec4( diffuse, opacity );
-				#include <color_fragment>
-				outgoingLight = diffuseColor.rgb;
-				outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0 - 0.3);
-				gl_FragColor = vec4( outgoingLight, diffuseColor.a );
-			}`,
-			vertexColors: THREE.VertexColors,
-			depthWrite: false,
-			blending: THREE.AdditiveBlending
-		}
-		var starMaterial = new THREE.ShaderMaterial(starMaterialParams);
-		starMaterial.uniforms.size.value = 3;
-		this.starMaterial = starMaterial;
 		this.currentSpeed = 0;
 		this.gridLastUpdated = 0;
 		this.gridPoints = null;
@@ -90,7 +57,7 @@ AFRAME.registerComponent('celestial-sphere', {
 					l: [181.9790995, 58517.81538729], p: [131.60246718, 0.00268329], o: [76.67984255, -0.27769418]
 				},
 				{
-					name: "Mars", color: 0xaa5544, size: 3390.0,
+					name: "Mars", color: 0x885544, size: 3390.0,
 					a: [1.52371034, 1.847e-05], e: [0.0933941, 7.882e-05], i: [1.84969142, -0.00813131],
 					l: [-4.55343205, 19140.30268499], p: [-23.94362959, 0.44441088], o: [49.55953891, -0.29257343]
 				},
@@ -100,22 +67,22 @@ AFRAME.registerComponent('celestial-sphere', {
 					l: [34.39644051, 3034.74612775], p: [14.72847983, 0.21252668], o: [100.47390909, 0.20469106]
 				},
 				{
-					name: "Saturn", size: 58232,
+					name: "Saturn", color: 0xddcccc, size: 58232,
 					a: [9.53667594, -0.0012506], e: [0.05386179, -0.00050991], i: [2.48599187, 0.00193609],
 					l: [49.95424423, 1222.49362201], p: [92.59887831, -0.41897216], o: [113.66242448, -0.28867794]
 				},
 				{
-					name: "Uranus", color: 0xccddff, size: 25362,
+					name: "Uranus", color: 0x445577, size: 25362,
 					a: [19.18916464, -0.00196176], e: [0.04725744, -4.397e-05], i: [0.77263783, -0.00242939],
 					l: [313.23810451, 428.48202785], p: [170.9542763, 0.40805281], o: [74.01692503, 0.04240589]
 				},
 				{
-					name: "Neptune", color: 0x7777ff, size: 24622,
+					name: "Neptune", color: 0x444488, size: 24622,
 					a: [30.06992276, 0.00026291], e: [0.00859048, 5.105e-05], i: [1.77004347, 0.00035372],
 					l: [-55.12002969, 218.45945325], p: [44.96476227, -0.32241464], o: [131.78422574, -0.00508664]
 				},
 				{
-					name: "Pluto", size: 1185,
+					name: "Pluto", color: 0x998888, size: 1185,
 					a: [39.48211675, -0.00031596], e: [0.2488273, 5.17e-05], i: [17.14001206, 4.818e-05],
 					l: [238.92903833, 145.20780515], p: [224.06891629, -0.04062942], o: [110.30393684, -0.01183482]
 				}
@@ -275,13 +242,13 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		var v = axisZ.clone();
 		for (var i = 0; i < 6; i++) {
-			doddedCircle(geometry, new THREE.Vector3(0, this.data.radius, 0), v, d, new THREE.Color(0, 0, 0.4));
+			doddedCircle(geometry, new THREE.Vector3(0, this.data.radius, 0), v, d, new THREE.Color(0, 0, 0.6));
 			v.applyAxisAngle(axisY, 2 * Math.PI / 12);
 		}
 		v = new THREE.Vector3(this.data.radius, 0, 0);
 		for (var i = 1; i < 4; i++) {
-			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.4));
-			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, -Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.4));
+			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.6));
+			doddedCircle(geometry, v.clone().applyAxisAngle(axisZ, -Math.PI / 2 / 4 * i), axisY, d, new THREE.Color(0, 0, 0.6));
 		}
 
 		/*
@@ -293,7 +260,11 @@ AFRAME.registerComponent('celestial-sphere', {
 		doddedCircle(geometry, st, omv, 270, new THREE.Color(0.6, 0.5, 0.1));
 		*/
 
-		let points = new THREE.Points(geometry, this.starMaterial);
+		let mat = new THREE.PointsMaterial({
+			vertexColors: THREE.VertexColors, fog: false, depthWrite: false, sizeAttenuation: false,
+			blending: THREE.CustomBlending, blendEquation: THREE.MaxEquation
+		});
+		let points = new THREE.Points(geometry, mat);
 		this.el.object3D.add(points);
 		this.gridPoints = points;
 		this.gridPoints.visible = this.data.grid;
@@ -372,10 +343,12 @@ AFRAME.registerComponent('celestial-sphere', {
 	_loadStars: async function (src) {
 		let response = await fetch(src);
 		let result = await response.json();
-		let geometry = new THREE.Geometry();
 		const axisY = new THREE.Vector3(0, 1, 0);
 		const axisX = new THREE.Vector3(1, 0, 0);
 		let pointMap = {};
+		let vertices = [];
+		let colors = [];
+		let sizes = [];
 		for (let i = 0; i < result.length; i++) {
 			var star = result[i];
 
@@ -385,21 +358,66 @@ AFRAME.registerComponent('celestial-sphere', {
 
 			let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
 			let t = 4600 * ((1 / ((0.92 * star.bv) + 1.7)) + (1 / ((0.92 * star.bv) + 0.62)));
+			let sz = 3 + (b > 1 ? Math.sqrt(b - 1) * 0.5 : 0);
 			if (t < 6504) {
 				let bg = t / 6504 * 0.3 + 0.7;
-				geometry.colors.push(new THREE.Color(b, b * bg, b * bg));
+				colors.push(new THREE.Color(b, b * bg, b * bg));
 			} else {
 				let rg = 6504 / t * 0.4 + 0.6;
-				geometry.colors.push(new THREE.Color(b * rg, b * rg, b));
+				colors.push(new THREE.Color(b * rg, b * rg, b));
 			}
-			if (star.id != null) pointMap[star.id] = geometry.vertices.length;
-			geometry.vertices.push(v);
+			if (star.id != null) pointMap[star.id] = vertices.length;
+			vertices.push(v);
+			sizes.push(sz);
 		}
+
+		var starMaterialParams = {
+			uniforms: THREE.ShaderLib.points.uniforms,
+			vertexShader: `
+			attribute float size;
+			#include <common>
+			#include <color_pars_vertex>
+			void main() {
+				#include <color_vertex>
+				#include <begin_vertex>
+				#include <project_vertex>
+				gl_PointSize = size;
+			}`,
+			fragmentShader: `
+			uniform vec3 diffuse;
+			uniform float opacity;
+			#include <common>
+			#include <color_pars_fragment>
+			void main() {
+				vec3 outgoingLight = vec3( 0.0 );
+				vec4 diffuseColor = vec4( diffuse, opacity );
+				#include <color_fragment>
+				outgoingLight = diffuseColor.rgb;
+				outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0 - 0.3);
+				gl_FragColor = vec4( outgoingLight, diffuseColor.a );
+			}`,
+			vertexColors: THREE.VertexColors,
+			depthWrite: false,
+			fog: false,
+			blending: THREE.AdditiveBlending
+		}
+		var starMaterial = new THREE.ShaderMaterial(starMaterialParams);
+		// starMaterial.uniforms.size.value = 8;
+		this.starMaterial = starMaterial;
+
+
+		let geometry = new THREE.BufferGeometry();
+		let positionAttr = new THREE.BufferAttribute(new Float32Array(vertices.length * 3), 3).copyVector3sArray(vertices);
+		geometry.addAttribute('position', positionAttr);
+		let colorAttr = new THREE.BufferAttribute(new Float32Array(colors.length * 3), 3).copyColorsArray(colors);
+		geometry.addAttribute('color', colorAttr);
+		let sizeAttr = new THREE.BufferAttribute(Float32Array.from(sizes), 1);
+		geometry.addAttribute('size', sizeAttr);
 		let points = new THREE.Points(geometry, this.starMaterial);
 		this.el.setObject3D('mesh', points);
 
 		if (this.data.constellationSrc != '') {
-			this._loadConstellations(this.data.constellationSrc, points, pointMap);
+			this._loadConstellations(this.data.constellationSrc, vertices, pointMap);
 		}
 	},
 	_loadConstellations: async function (src, points, pointMap) {
@@ -410,7 +428,6 @@ AFRAME.registerComponent('celestial-sphere', {
 			color: 0x002244,
 			fog: false
 		});
-		let geometry = new THREE.BufferGeometry();
 		let boundaryShapes = [];
 		let materialIndexToName = [];
 		this.constellations = {};
@@ -432,7 +449,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.constellations[c.name].lineStart = lineVerts.length / 3;
 			this.constellations[c.name].lineCount = c.lines.length / 2;
 			c.lines.forEach(p => {
-				points.geometry.vertices[pointMap[p]].toArray(lineVerts, lineVerts.length);
+				points[pointMap[p]].toArray(lineVerts, lineVerts.length);
 			});
 
 			c.boundary.forEach(b => {
@@ -463,6 +480,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			});
 		});
 
+		let geometry = new THREE.BufferGeometry();
 		geometry.addAttribute('position', new THREE.BufferAttribute(Float32Array.from(lineVerts), 3));
 
 		let line = new THREE.LineSegments(geometry, material);
