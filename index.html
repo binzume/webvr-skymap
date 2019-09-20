@@ -8,8 +8,8 @@
   <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@v0.9.2/dist/aframe-master.min.js"></script>
   <script src="https://binzume.github.io/aframe-xylayout/aframe-xylayout.js?5"></script>
   <script src="https://binzume.github.io/aframe-xylayout/aframe-window.js?5"></script>
-  <script src="js/celestial-sphere.js?1"></script>
-  <script src="js/skymap.js?3"></script>
+  <script src="js/celestial-sphere.js?2"></script>
+  <script src="js/skymap.js?4"></script>
   <script src="3rdparty/aframe-material.js"></script>
 </head>
 
@@ -19,15 +19,26 @@
     <a-sky class="collidable" menu-on-click="template:mainMenuTemplate;offsetY:-1"></a-sky>
 
     <a-assets>
-      <!-- menu pane -->
+        <img id="menuicons" src="images/icons.png" />
+        <!-- menu pane -->
       <script id="mainMenuTemplate" type="text/html">
         <a-xywindow main-menu position="0 5 -8" title="Menu" width="4.5" height="0.6" align-items="stretch">
           <a-xylayout height="0.6" direction="horizontal" justify-items="stretch">
-            <a-xybutton name="selector" label="*" width="1" height="0.6"></a-xybutton>
-            <a-xybutton name="constellations" label="Lines" width="1.2" height="0.6"></a-xybutton>
-            <a-xybutton name="drawgrid" label="Grid" width="1.2" height="0.6"></a-xybutton>
-            <a-xybutton name="drawsol" label="Solar" width="1.2" height="0.6"></a-xybutton>
-            <a-xybutton name="openConfigButton" label="Config" width="1" height="0.6"></a-xybutton>
+            <a-xybutton name="selector" label="*" width="1" height="0.6">
+              <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:0"></a-plane>
+            </a-xybutton>
+            <a-xybutton name="constellations" label="Line" width="1.2" height="0.6">
+              <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:1"></a-plane>
+            </a-xybutton>
+            <a-xybutton name="drawgrid" label="Grid" width="1.2" height="0.6">
+              <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:2"></a-plane>
+            </a-xybutton>
+            <a-xybutton name="drawsol" label="Solar" width="1.2" height="0.6">
+              <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:3"></a-plane>
+            </a-xybutton>
+            <a-xybutton name="openConfigButton" label="Config" width="1" height="0.6">
+              <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:4"></a-plane>
+            </a-xybutton>
             <a-xybutton name="exitVRButton" label="Exit VR" width="1" height="0.6"></a-xybutton>
           </a-xylayout>
           <a-xylayout height="0.6" direction="horizontal" justify-items="stretch">

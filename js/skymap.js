@@ -62,6 +62,98 @@ AFRAME.registerComponent('position-controls', {
 	}
 });
 
+
+AFRAME.registerShader('msdf2', {
+	schema: {
+		diffuse: { type: 'color', is: 'uniform', default: "#ffffff" },
+		opacity: { type: 'number', is: 'uniform', default: 1.0 },
+		src: { type: 'map', is: 'uniform' },
+		offset: { type: 'vec2', is: 'uniform', default: { x: 0, y: 0 } },
+		repeat: { type: 'vec2', is: 'uniform', default: { x: 1, y: 1 } },
+		msdfUnit: { type: 'vec2', is: 'uniform', default: { x: 0.1, y: 0.1 } },
+	},
+	init: function (data) {
+		this.attributes = this.initVariables(data, 'attribute');
+		this.uniforms = THREE.UniformsUtils.merge([this.initVariables(data, 'uniform'), THREE.UniformsLib.fog]);
+		this.material = new THREE.ShaderMaterial({
+			uniforms: this.uniforms,
+			vertexShader: this.vertexShader,
+			fragmentShader: this.fragmentShader,
+			flatShading: true,
+			fog: true
+		});
+	},
+	vertexShader: `
+	#define USE_MAP
+	#define USE_UV
+	#include <common>
+	#include <uv_pars_vertex>
+	#include <color_pars_vertex>
+	#include <fog_pars_vertex>
+	#include <clipping_planes_pars_vertex>
+	uniform vec2 offset;
+	uniform vec2 repeat;
+	void main() {
+		// #include <uv_vertex>
+		vUv = uv * repeat + offset;
+		#include <color_vertex>
+		#include <begin_vertex>
+		#include <project_vertex>
+		#include <worldpos_vertex>
+		#include <clipping_planes_vertex>
+		#include <fog_vertex>
+	}`,
+	fragmentShader: `
+	#extension GL_OES_standard_derivatives : enable
+	uniform vec3 diffuse;
+	uniform float opacity;
+	uniform vec3 color;
+	uniform vec2 msdfUnit;
+	uniform sampler2D src;
+	#define USE_MAP
+	#define USE_UV
+	#include <common>
+	#include <color_pars_fragment>
+	#include <uv_pars_fragment>
+	#include <fog_pars_fragment>
+	#include <clipping_planes_pars_fragment>
+	float median(float r, float g, float b) {
+		return max(min(r, g), min(max(r, g), b));
+	}
+	void main() {
+		#include <clipping_planes_fragment>
+		vec4 sample = texture2D( src, vUv );
+		float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
+		sigDist *= dot(msdfUnit, 0.5/fwidth(vUv));
+
+		vec4 diffuseColor = vec4( diffuse, opacity * clamp(sigDist + 0.5, 0.0, 1.0));
+		#include <color_fragment>
+		#include <alphatest_fragment>
+		gl_FragColor = diffuseColor;
+		#include <fog_fragment>
+	}`
+});
+
+AFRAME.registerComponent('atlas', {
+	schema: {
+		src: { default: "" },
+		index: { default: 0 },
+		cols: { default: 1 },
+		rows: { default: 1 }
+	},
+	update() {
+		let u = (( this.data.index % this.data.cols )) / this.data.cols;
+		let v = (this.data.rows - 1 - Math.floor(this.data.index / this.data.cols) ) / this.data.rows;
+		this.el.setAttribute("material", {
+			shader: 'msdf2',
+			transparent: true,
+			offset: { x: u, y: v },
+			repeat: { x: 1 / this.data.cols, y: 1 / this.data.rows },
+			src: this.data.src
+		});
+	},
+});
+
 AFRAME.registerShader('gridground', {
 	schema: {
 		color: { type: 'color', is: 'uniform', default: "#ffff00" }
@@ -105,7 +197,7 @@ AFRAME.registerShader('gridground', {
 	void main() {
 		#include <clipping_planes_fragment>
 		vec2 gpos = abs(mod(vUv * 0.5, 1.0) - vec2(0.5,0.5));
-		float l = max(pow(0.5, gpos.x * 300.0), pow(0.5, gpos.y * 300.0)) * pow(0.5, length(gpos) * 10.0);
+		float l = max(pow(0.5, gpos.x * 400.0), pow(0.5, gpos.y * 400.0)) * pow(0.5, length(gpos) * 25.0);
 		if (l < 0.1) {
 			discard;
 		}
@@ -135,13 +227,19 @@ AFRAME.registerComponent('main-menu', {
 			document.querySelector('a-scene').exitVR();
 		});
 		this._getEl('constellations').addEventListener('click', (e) => {
-			sphereEl.setAttribute("celestial-sphere", "constellation", !sphereEl.getAttribute("celestial-sphere").constellation);
+			let v = !sphereEl.getAttribute("celestial-sphere").constellation;
+			sphereEl.setAttribute("celestial-sphere", "constellation", v);
+			this._getEl('constellations').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
 		});
 		this._getEl('drawgrid').addEventListener('click', (e) => {
-			sphereEl.setAttribute("celestial-sphere", "grid", !sphereEl.getAttribute("celestial-sphere").grid);
+			let v = !sphereEl.getAttribute("celestial-sphere").grid;
+			sphereEl.setAttribute("celestial-sphere", "grid", v);
+			this._getEl('drawgrid').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
 		});
 		this._getEl('drawsol').addEventListener('click', (e) => {
-			sphereEl.setAttribute("celestial-sphere", "solarsystem", !sphereEl.getAttribute("celestial-sphere").solarsystem);
+			let v = !sphereEl.getAttribute("celestial-sphere").solarsystem;
+			sphereEl.setAttribute("celestial-sphere", "solarsystem", v);
+			this._getEl('drawsol').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
 		});
 		this._getEl('speed').addEventListener('change', ev => {
 			sphereEl.setAttribute("celestial-sphere", "speed", [1, 60, 300, 3600][ev.detail.index]);
@@ -175,11 +273,13 @@ AFRAME.registerComponent('main-menu', {
 		});
 		this._getEl('selector').addEventListener('click', ev => {
 			let component = 'constellation-selector';
+			let v = !this.el.hasAttribute(component);
 			if (this.el.hasAttribute(component)) {
 				this.el.removeAttribute(component);
 			} else {
 				this.el.setAttribute(component, { raycaster: ev.detail.cursorEl });
 			}
+			this._getEl('selector').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
 		});
 	},
 	remove: function () {
