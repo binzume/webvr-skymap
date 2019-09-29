@@ -1,6 +1,6 @@
-# [WIP] WebVR SkyMap
+# WebVR SkyMap
 
-WebVRで星空を表示するやつです
+WebVRで星空を表示するやつです．実際の星空に近い見た目を目指しています．
 
 DEMO: https://binzume.github.io/webvr-skymap/
 
