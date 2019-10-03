@@ -4,9 +4,18 @@ AFRAME.ASSETS_PATH = "./3rdparty/assets"; // assets for a-frame-material
 
 function instantiate(id, parent) {
 	var p = document.createElement('div');
-	p.innerHTML = document.querySelector('#' + id).innerHTML;
+	p.innerHTML = document.getElementById(id).innerHTML;
 	var el = p.firstElementChild;
-	(parent || document.querySelector("a-scene")).appendChild(el);
+
+	let mod = document.getElementById(id).dataset.import;
+	if (mod) {
+		(async () => {
+			await import((mod.startsWith("/") || mod.includes("://")) ? mod : "../" + mod);
+			(parent || document.querySelector("a-scene")).appendChild(el);
+		})();
+	} else {
+		(parent || document.querySelector("a-scene")).appendChild(el);
+	}
 	return el;
 }
 
@@ -56,7 +65,7 @@ AFRAME.registerComponent('position-controls', {
 			let speedFactor = 0.1;
 			let direction = ev.target.components.raycaster.raycaster.ray.direction;
 			let rot = Math.atan2(direction.x, direction.z);
-			let v = new THREE.Vector3(-ev.detail.axis[0], 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0,1,0), rot);
+			let v = new THREE.Vector3(-ev.detail.axis[0], 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
 			this.el.object3D.position.add(v.multiplyScalar(speedFactor));
 		}));
 	}
@@ -94,7 +103,6 @@ AFRAME.registerShader('msdf2', {
 	uniform vec2 offset;
 	uniform vec2 repeat;
 	void main() {
-		// #include <uv_vertex>
 		vUv = uv * repeat + offset;
 		#include <color_vertex>
 		#include <begin_vertex>
@@ -107,7 +115,6 @@ AFRAME.registerShader('msdf2', {
 	#extension GL_OES_standard_derivatives : enable
 	uniform vec3 diffuse;
 	uniform float opacity;
-	uniform vec3 color;
 	uniform vec2 msdfUnit;
 	uniform sampler2D src;
 	#define USE_MAP
@@ -139,18 +146,19 @@ AFRAME.registerComponent('atlas', {
 		src: { default: "" },
 		index: { default: 0 },
 		cols: { default: 1 },
-		rows: { default: 1 }
+		rows: { default: 1 },
+		margin: { default: 0.01 }
 	},
 	update() {
-		let u = (( this.data.index % this.data.cols )) / this.data.cols;
-		let v = (this.data.rows - 1 - Math.floor(this.data.index / this.data.cols) ) / this.data.rows;
+		let u = (this.data.index % this.data.cols + this.data.margin) / this.data.cols;
+		let v = (this.data.rows - 1 - Math.floor(this.data.index / this.data.cols) + this.data.margin) / this.data.rows;
 		this.el.setAttribute("material", {
 			shader: 'msdf2',
 			transparent: true,
-			offset: { x: u, y: v },
-			repeat: { x: 1 / this.data.cols, y: 1 / this.data.rows },
+			repeat: { x: 1 / this.data.cols - this.data.margin, y: 1 / this.data.rows - this.data.margin },
 			src: this.data.src
 		});
+		this.el.setAttribute("material", "offset", { x: u, y: v });
 	},
 });
 
@@ -407,6 +415,7 @@ AFRAME.registerComponent('config-dialog', {
 			console.log("geolocation unsupported");
 			return;
 		}
+		// TODO fetch("https://ipapi.co/json/");
 		navigator.geolocation.getCurrentPosition(location => {
 			this.latEl.value = location.coords.latitude;
 			this.lngEl.value = location.coords.longitude;
