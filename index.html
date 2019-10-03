@@ -18,27 +18,29 @@
     <a-sky class="collidable" menu-on-click="template:mainMenuTemplate;offsetY:-1"></a-sky>
 
     <a-assets>
-        <img id="menuicons" src="images/icons.png" />
-        <!-- menu pane -->
+      <img id="menuicons" src="images/icons.png" />
+      <!-- menu pane -->
       <script id="mainMenuTemplate" type="text/html">
         <a-xywindow main-menu position="0 5 -8" title="Menu" width="4.5" height="0.6" align-items="stretch">
           <a-xycontainer height="0.6" direction="horizontal" justify-items="stretch">
-            <a-xybutton name="selector" label="*" width="1" height="0.6">
+            <a-xybutton name="selector" width="1" height="0.6">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:0"></a-plane>
             </a-xybutton>
-            <a-xybutton name="constellations" label="Line" width="1.2" height="0.6">
+            <a-xybutton name="constellations" width="1.2" height="0.6">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:1"></a-plane>
             </a-xybutton>
-            <a-xybutton name="drawgrid" label="Grid" width="1.2" height="0.6">
+            <a-xybutton name="drawgrid" width="1.2" height="0.6">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:2"></a-plane>
             </a-xybutton>
-            <a-xybutton name="drawsol" label="Solar" width="1.2" height="0.6">
+            <a-xybutton name="drawsol" width="1.2" height="0.6">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:3"></a-plane>
             </a-xybutton>
-            <a-xybutton name="openConfigButton" label="Config" width="1" height="0.6">
+            <a-xybutton name="openConfigButton" width="1" height="0.6">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:4"></a-plane>
             </a-xybutton>
-            <a-xybutton name="exitVRButton" label="Exit VR" width="1" height="0.6"></a-xybutton>
+            <a-xybutton name="exitVRButton" width="1" height="0.6">
+              <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:5"></a-plane>
+            </a-xybutton>
           </a-xycontainer>
           <a-xycontainer height="0.6" direction="horizontal" justify-items="stretch">
               <a-xylabel name="time-text" width="3" height="0.6" value="0000-00-00 00:00:00"></a-xylabel>
