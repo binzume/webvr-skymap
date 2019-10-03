@@ -250,7 +250,7 @@ AFRAME.registerComponent('main-menu', {
 			this._getEl('drawsol').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
 		});
 		this._getEl('speed').addEventListener('change', ev => {
-			sphereEl.setAttribute("celestial-sphere", "speed", [1, 60, 300, 3600][ev.detail.index]);
+			sphereEl.setAttribute("celestial-sphere", "speed", [1, 60, 300, 3600, 0][ev.detail.index]);
 		});
 		this._getEl('time-now').addEventListener('click', (e) => {
 			sphereEl.setAttribute("celestial-sphere", "timeMs", Date.now());
@@ -278,6 +278,12 @@ AFRAME.registerComponent('main-menu', {
 		});
 		this._getEl('time-dh').addEventListener('click', (e) => {
 			this._modifyTime(sphereEl, d => d.setHours(d.getHours() - 1));
+		});
+		this._getEl('time-ui').addEventListener('click', (e) => {
+			this._modifyTime(sphereEl, d => d.setMinutes(d.getMinutes() + 1));
+		});
+		this._getEl('time-di').addEventListener('click', (e) => {
+			this._modifyTime(sphereEl, d => d.setMinutes(d.getMinutes() - 1));
 		});
 		this._getEl('selector').addEventListener('click', ev => {
 			let component = 'constellation-selector';
