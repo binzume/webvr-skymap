@@ -203,6 +203,18 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 		let c = this.constellations[name] || { lineStart: 0, lineCount: Infinity };
 		this.constellationLines.geometry.setDrawRange(c.lineStart, c.lineCount * 2);
+		this._lineAnimation();
+	},
+	_lineAnimation: function () {
+		clearInterval(this.lineAnimationTimer);
+		this.constellationLines.material.uniforms.k.value = 3.0;
+		this.lineAnimationTimer = setInterval(() => {
+			this.constellationLines.material.uniforms.k.value -= 0.2;
+			if (this.constellationLines.material.uniforms.k.value <= 0.1) {
+				this.constellationLines.material.uniforms.k.value = 0.1;
+				clearInterval(this.lineAnimationTimer);
+			}
+		}, 15);
 	},
 	getCoord: function (direction) {
 		let q = this.el.object3D.getWorldQuaternion(new THREE.Quaternion());
@@ -424,14 +436,39 @@ AFRAME.registerComponent('celestial-sphere', {
 		let response = await fetch(src);
 		let constellations = await response.json();
 
-		let material = new THREE.LineBasicMaterial({
-			color: 0x002244,
-			fog: false
-		});
+		let uniforms = {
+			k: { value: .1 }
+		};
+		var shaderParams = {
+			uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.common, uniforms]),
+			vertexShader: `
+			attribute float vertex_dist;
+			varying float len;
+			varying float pos;
+			#include <common>
+			void main() {
+				#include <begin_vertex>
+				#include <project_vertex>
+				len = abs(vertex_dist);
+				pos = (vertex_dist + len) * .5;
+			}`,
+			fragmentShader: `
+			uniform vec3 diffuse;
+			uniform float k;
+			varying float len;
+			varying float pos;
+			#include <common>
+			void main() {
+				gl_FragColor = vec4( diffuse, 1.0 ) * (smoothstep(.0, k, pos) * smoothstep(.0, k, len - pos));
+			}`,
+			blending: THREE.AdditiveBlending
+		}
+		let material = new THREE.ShaderMaterial(shaderParams);
+		material.uniforms.diffuse.value = new THREE.Color(0x002244);
 		let boundaryShapes = [];
 		let materialIndexToName = [];
 		this.constellations = {};
-		let lineVerts = [];
+		let lineVerts = [], lineDists = [];
 		constellations.forEach((c) => {
 			this.constellations[c.name] = c;
 			for (let i = 0; i < c.lines.length; i++) {
@@ -448,8 +485,12 @@ AFRAME.registerComponent('celestial-sphere', {
 			}
 			this.constellations[c.name].lineStart = lineVerts.length / 3;
 			this.constellations[c.name].lineCount = c.lines.length / 2;
-			c.lines.forEach(p => {
+			c.lines.forEach((p, i) => {
 				points[pointMap[p]].toArray(lineVerts, lineVerts.length);
+				if (i % 2 == 0) {
+					let l = points[pointMap[p]].distanceTo(points[pointMap[c.lines[i + 1]]]) * 10 / this.data.radius;
+					lineDists.push(-l, l);
+				}
 			});
 
 			c.boundary.forEach(b => {
@@ -482,6 +523,7 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		let geometry = new THREE.BufferGeometry();
 		geometry.addAttribute('position', new THREE.BufferAttribute(Float32Array.from(lineVerts), 3));
+		geometry.addAttribute('vertex_dist', new THREE.BufferAttribute(Float32Array.from(lineDists), 1));
 
 		let line = new THREE.LineSegments(geometry, material);
 		this.el.object3D.add(line);
