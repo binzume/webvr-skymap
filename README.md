@@ -4,7 +4,7 @@ WebVRで星空を表示するやつです．実際の星空に近い見た目を
 
 DEMO: https://binzume.github.io/webvr-skymap/
 
-![Celestial sphere](./data/sphere.png)
+![Celestial sphere](./images/sphere.png)
 
 - WebVR対応ブラウザ + コントローラが必要です (Oculus Go/Questで動作確認)
 - 太陽と月が表示されていますが，地球と月の共通重心から見てるので日食などは不正確です
