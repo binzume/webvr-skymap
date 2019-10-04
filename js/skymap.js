@@ -285,6 +285,12 @@ AFRAME.registerComponent('main-menu', {
 		this._getEl('time-di').addEventListener('click', (e) => {
 			this._modifyTime(sphereEl, d => d.setMinutes(d.getMinutes() - 1));
 		});
+		this._getEl('time-us').addEventListener('click', (e) => {
+			this._modifyTime(sphereEl, d => d.setSeconds(d.getSeconds() + 1));
+		});
+		this._getEl('time-ds').addEventListener('click', (e) => {
+			this._modifyTime(sphereEl, d => d.setSeconds(d.getSeconds() - 1));
+		});
 		this._getEl('selector').addEventListener('click', ev => {
 			let component = 'constellation-selector';
 			let v = !this.el.hasAttribute(component);
