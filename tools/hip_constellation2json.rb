@@ -1,13 +1,17 @@
 #!/bin/env ruby -Ku
 # Usage: ruby hip_2json.rb > hip_constellations.json
 # http://astronomy.webcrow.jp/hip/
+# http://astronomy.webcrow.jp/constellation/boundary.csv
+
 require 'json'
 
-constellations = {}
 constellationIds = {}
+names = {}
 open(ARGV[0] || "constellation_name_utf8.csv").read.lines{|line|
     row = line.chomp.split(',')
-    constellationIds[row[0]] = {name: row[1], nameEn: row[2], nameJa: row[3]}
+    c = {name: row[1], nameEn: row[2], nameJa: row[3]}
+    constellationIds[row[0]] = c
+    names[c[:name]] = c
 }
 
 boundaries = {}
@@ -30,14 +34,16 @@ boundaries = boundaries.map{|k,b|
     }]
 }.to_h
 
+constellations = {}
 open(ARGV[0] || "hip_constellation_line.csv").read.lines.each{|line|
     row = line.chomp.split(',')
     hipId = row[0].to_i
-    constellations[row[0]] = {name: row[0], lines: [], boundary: boundaries[row[0]] || []} unless constellations[row[0]]
+    constellations[row[0]] = {name: row[0], nameEn: names[row[0]][:nameEn], nameJa: names[row[0]][:nameJa], lines: [], boundary: boundaries[row[0]] || []} unless constellations[row[0]]
     constellations[row[0]][:lines] << row[1].to_i << row[2].to_i
 }
 
+print "["
 constellations.values.each_with_index{|c,i|
-    print (i == 0 ? "[": ",\n") + JSON.generate(c)
+    print (i == 0 ? "": ",\n") + JSON.generate(c)
 }
-puts "]"
+print "]\n"

@@ -344,7 +344,7 @@ AFRAME.registerComponent('constellation-selector', {
 			this.sphere.selectConstellation(c ? c.name : null);
 		}
 		let coord = this.sphere.getCoord(raycaster.ray.direction);
-		this.labelEl.setAttribute('value', (c ? c.name : "?") + " (" + Math.round(coord[0] * 10) / 10 + "," + Math.round(coord[1] * 10) / 10);
+		this.labelEl.setAttribute('value', "" + Math.round(coord[0] * 10) / 10 + "," + Math.round(coord[1] * 10) / 10 + (c ? `\n${c.nameEn} (${c.name})` : ""));
 		let ray = raycaster.ray;
 		let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
 		this.labelEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
