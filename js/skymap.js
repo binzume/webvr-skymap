@@ -427,10 +427,14 @@ AFRAME.registerComponent('config-dialog', {
 			console.log("geolocation unsupported");
 			return;
 		}
-		// TODO fetch("https://ipapi.co/json/");
 		navigator.geolocation.getCurrentPosition(location => {
 			this.latEl.value = location.coords.latitude;
 			this.lngEl.value = location.coords.longitude;
+		}, async (err) => {
+			let response = await fetch("https://ipapi.co/json/");
+			let result = await response.json();
+			this.latEl.value = result.latitude;
+			this.lngEl.value = result.longitude;
 		});
 	}
 });
