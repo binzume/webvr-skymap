@@ -21,7 +21,7 @@ DEMO: https://binzume.github.io/webvr-skymap/
 ## TODO
 
 - まともなUI
-- 星座名・星座境界
+- 恒星名，星座境界の表示
 
 # License
 

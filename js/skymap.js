@@ -331,8 +331,18 @@ AFRAME.registerComponent('constellation-selector', {
 		let sphereEl = document.querySelector('[celestial-sphere]');
 		this.sphere = sphereEl.components['celestial-sphere'];
 		this.orgconstellation = this.sphere.data.constellation;
-		this.labelEl = document.createElement('a-text');
-		this.el.sceneEl.appendChild(this.labelEl);
+		this.balloonEl = document.createElement('a-entity');
+		this.el.sceneEl.appendChild(this.balloonEl);
+		this.labelEl = document.createElement('a-xylabel');
+		this.labelEl.setAttribute("xyrect", { width: 4, height: 0.4 });
+		this.labelEl.setAttribute("xylabel", { align: "left", xOffset: 2.2 });
+		this.labelEl.setAttribute("position", { x: 0, y: 0.2, z: 0 });
+		this.coodEl = document.createElement('a-xylabel');
+		this.coodEl.setAttribute("xyrect", { width: 4, height: 0.4 });
+		this.coodEl.setAttribute("xylabel", { align: "left", xOffset: 2.2 });
+		this.coodEl.setAttribute("position", { x: 0, y: -0.2, z: 0 });
+		this.balloonEl.appendChild(this.labelEl);
+		this.balloonEl.appendChild(this.coodEl);
 		sphereEl.setAttribute('celestial-sphere', 'constellation', true);
 		this.selected = null;
 	},
@@ -344,11 +354,17 @@ AFRAME.registerComponent('constellation-selector', {
 			this.sphere.selectConstellation(c ? c.name : null);
 		}
 		let coord = this.sphere.getCoord(raycaster.ray.direction);
-		this.labelEl.setAttribute('value', "" + Math.round(coord[0] * 10) / 10 + "," + Math.round(coord[1] * 10) / 10 + (c ? `\n${c.nameEn} (${c.name})` : ""));
+		let displayName = navigator.language.startsWith("ja") ? c.nameJa : c.nameEn;
+		let defformat = (d, s) => {
+			let dd = Math.abs(d), d1 = Math.floor(dd), d2 = Math.floor((dd - d1) * 60);
+			return (d < 0 ? "-" : "") + `${("0" + d1).slice(-2)}${s}${("0" + d2).slice(-2)}'`;
+		};
+		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0] / 360 * 24, "h") + " Dec:" + defformat(coord[1], "d"));
+		this.labelEl.setAttribute('value', c ? `${displayName} (${c.name})` : "");
 		let ray = raycaster.ray;
 		let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
-		this.labelEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
-		this.labelEl.object3D.quaternion.copy(rot);
+		this.balloonEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
+		this.balloonEl.object3D.quaternion.copy(rot);
 	},
 	remove: function () {
 		this.el.sceneEl.removeChild(this.labelEl);
@@ -364,7 +380,6 @@ AFRAME.registerComponent('menu-on-click', {
 		offsetY: { type: 'number', default: 0 },
 	},
 	init: function () {
-		this.el.classList.add("clickable");
 		this.el.addEventListener('click', (ev) => {
 			if (document.querySelector("[main-menu]")) {
 				return;
