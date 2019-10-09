@@ -364,10 +364,11 @@ AFRAME.registerComponent('constellation-selector', {
 		let ray = raycaster.ray;
 		let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
 		this.balloonEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
-		this.balloonEl.object3D.quaternion.copy(rot);
+		this.balloonEl.object3D.lookAt(ray.origin);
+		// this.balloonEl.object3D.quaternion.copy(rot);
 	},
 	remove: function () {
-		this.el.sceneEl.removeChild(this.labelEl);
+		this.el.sceneEl.removeChild(this.balloonEl);
 		this.sphere.selectConstellation(null);
 		this.sphere.el.setAttribute('celestial-sphere', 'constellation', this.orgconstellation);
 	}
