@@ -2,71 +2,152 @@
 
 AFRAME.ASSETS_PATH = "./3rdparty/assets"; // assets for a-frame-material
 
-function instantiate(id, parent) {
-	var p = document.createElement('div');
-	p.innerHTML = document.getElementById(id).innerHTML;
-	var el = p.firstElementChild;
-
-	let mod = document.getElementById(id).dataset.import;
-	if (mod) {
-		(async () => {
-			await import((mod.startsWith("/") || mod.includes("://")) ? mod : "../" + mod);
-			(parent || document.querySelector("a-scene")).appendChild(el);
-		})();
-	} else {
-		(parent || document.querySelector("a-scene")).appendChild(el);
+async function instantiate(id, parent) {
+	let template = document.getElementById(id);
+	let base = location.href;
+	if (template.dataset.location) {
+		// TODO: cache
+		base = new URL(template.dataset.location, base);
+		let response = await fetch(template.dataset.location);
+		let doc = new DOMParser().parseFromString(await response.text(), "text/html")
+		template = doc.getElementById(id);
 	}
+	let wrapper = document.createElement('div');
+	wrapper.innerHTML = template.innerHTML;
+	var el = wrapper.firstElementChild;
+
+	let mod = template.dataset.import;
+	if (mod) {
+		await import(new URL(mod, base));
+	}
+	(parent || document.querySelector("a-scene")).appendChild(el);
 	return el;
 }
 
+AFRAME.registerComponent('instantiate-on-click', {
+	schema: {
+		template: { type: 'string', default: "" },
+		id: { type: 'string', default: "" },
+		align: { type: 'string', default: "" }
+	},
+	init() {
+		this.el.addEventListener('click', async (ev) => {
+			if (this.data.id && document.getElementById(this.data.id)) {
+				return;
+			}
+			let el = await instantiate(this.data.template);
+			if (this.data.id) {
+				el.id = this.data.id;
+			}
+			if (this.data.align == "raycaster") {
+				if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
+					return;
+				}
+				var raycaster = ev.detail.cursorEl.components.raycaster.raycaster;
+				var rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
+				var origin = raycaster.ray.origin;
+
+				el.addEventListener('loaded', function onLoaded(ev) {
+					el.removeEventListener('loaded', onLoaded, false);
+					let pos = new THREE.Vector3().add(el.getAttribute("position")).applyQuaternion(rot);
+					el.setAttribute("position", pos.add(origin));
+					el.object3D.quaternion.copy(rot);
+				}, false);
+			}
+		});
+	}
+});
+
+
 AFRAME.registerComponent('position-controls', {
 	schema: {
-		arrowkeys: { default: "" },
-		rotationSpeed: { default: 0.1 },
-		speed: { default: 0.1 }
+		arrowkeys: { default: "rotation" },
+		wasdkeys: { default: "translation" },
+		speed: { default: 0.1 },
+		rotationSpeed: { default: 0.1 }
 	},
 	init: function () {
-		if (this.data.arrowkeys == "rotation") {
+		let data = this.data;
+		if (data.arrowkeys || data.wasdkeys) {
+			let fns = {
+				rotation: [
+					(o) => o.rotateY(-data.rotationSpeed),
+					(o) => o.rotateY(data.rotationSpeed),
+					(o) => o.rotateX(-data.rotationSpeed),
+					(o) => o.rotateX(data.rotationSpeed),
+					(o) => o.quaternion.set(0, 0, 0, 1)
+				],
+				translation: [
+					(o) => o.translateX(-data.speed),
+					(o) => o.translateX(data.speed),
+					(o) => o.translateZ(data.speed),
+					(o) => o.translateZ(-data.speed),
+					(o) => o.position.set(0, 0, 0)
+				]
+			};
+			let arrowKeyFns = fns[data.arrowkeys] || [];
+			let wasdKeyFns = fns[data.wasdkeys] || [];
 			document.addEventListener('keydown', ev => {
-				let rot = this.data.rotationSpeed;
+				if (document.activeElement != document.body) {
+					return;
+				}
 				switch (ev.code) {
 					case "ArrowRight":
-						this.el.object3D.rotateY(-rot);
+						arrowKeyFns[0] && arrowKeyFns[0](this.el.object3D);
 						break;
 					case "ArrowLeft":
-						this.el.object3D.rotateY(rot);
+						arrowKeyFns[1] && arrowKeyFns[1](this.el.object3D);
 						break;
 					case "ArrowDown":
-						this.el.object3D.rotateX(-rot);
+						arrowKeyFns[2] && arrowKeyFns[2](this.el.object3D);
 						break;
 					case "ArrowUp":
-						this.el.object3D.rotateX(rot);
+						arrowKeyFns[3] && arrowKeyFns[3](this.el.object3D);
 						break;
 					case "Space":
-						this.el.setAttribute("rotation", { x: 0, y: 0, z: 0 });
+						arrowKeyFns[4] && arrowKeyFns[4](this.el.object3D);
+						break;
+					case "KeyA":
+						wasdKeyFns[0] && wasdKeyFns[0](this.el.object3D);
+						break;
+					case "KeyD":
+						wasdKeyFns[1] && wasdKeyFns[1](this.el.object3D);
+						break;
+					case "KeyS":
+						wasdKeyFns[2] && wasdKeyFns[2](this.el.object3D);
+						break;
+					case "KeyW":
+						wasdKeyFns[3] && wasdKeyFns[3](this.el.object3D);
 						break;
 				}
 			});
 		}
 		document.addEventListener('wheel', ev => {
-			this.el.object3D.translateZ(ev.deltaY * 0.01);
+			let speedFactor = 0.01;
+			var camera = this.el.sceneEl.camera;
+			var forward = camera.getWorldDirection(new THREE.Vector3());
+			forward.y = 0;
+			forward.normalize();
+			this.el.object3D.position.add(forward.multiplyScalar(-ev.deltaY * speedFactor));
 		});
+		this.changed = [];
 		this.el.addEventListener('gripdown', ev => {
 			document.querySelectorAll("[xy-drag-control]").forEach(el => {
-				el.setAttribute("xy-drag-control", { mode: "move" });
+				this.changed.push([el, Object.assign({}, el.getAttribute('xy-drag-control'))]);
+				el.setAttribute("xy-drag-control", { mode: "pull", autoRotate: false });
 			});
 		});
 		this.el.addEventListener('gripup', ev => {
-			document.querySelectorAll("[xy-drag-control]").forEach(el => {
-				el.setAttribute("xy-drag-control", { mode: "grab" });
+			this.changed.forEach(([el, dragControl]) => {
+				el.setAttribute("xy-drag-control", { mode: dragControl.mode, autoRotate: dragControl.autoRotate });
 			});
+			this.changed = [];
 		});
 		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('axismove', ev => {
-			let speedFactor = 0.1;
 			let direction = ev.target.components.raycaster.raycaster.ray.direction;
 			let rot = Math.atan2(direction.x, direction.z);
 			let v = new THREE.Vector3(-ev.detail.axis[0], 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
-			this.el.object3D.position.add(v.multiplyScalar(speedFactor));
+			this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
 		}));
 	}
 });
@@ -224,9 +305,9 @@ AFRAME.registerComponent('main-menu', {
 		this.configDialog = null;
 		let sphereEl = document.querySelector("[celestial-sphere]");
 		this.timer = setInterval(() => this._refreshTime(), 1000);
-		this._getEl('openConfigButton').addEventListener('click', (e) => {
+		this._getEl('openConfigButton').addEventListener('click', async (e) => {
 			if (!this.configDialog) {
-				this.configDialog = instantiate("configDialogTemplate", this.el);
+				this.configDialog = await instantiate("configDialogTemplate", this.el);
 			} else {
 				this.configDialog.components["config-dialog"].showDialog();
 			}
@@ -374,29 +455,6 @@ AFRAME.registerComponent('constellation-selector', {
 	}
 });
 
-AFRAME.registerComponent('menu-on-click', {
-	schema: {
-		template: { type: 'string', default: "" },
-		distance: { type: 'number', default: 10 },
-		offsetY: { type: 'number', default: 0 },
-	},
-	init: function () {
-		this.el.addEventListener('click', (ev) => {
-			if (document.querySelector("[main-menu]")) {
-				return;
-			}
-			var menuEl = instantiate(this.data.template);
-			if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
-				return;
-			}
-			var raycaster = ev.detail.cursorEl.components.raycaster.raycaster;
-			var rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
-			menuEl.object3D.quaternion.copy(rot);
-			var d = raycaster.ray.direction.clone().multiplyScalar(this.data.distance);
-			menuEl.setAttribute("position", raycaster.ray.origin.clone().add(d).add(new THREE.Vector3(0, this.data.offsetY, 0)));
-		});
-	}
-});
 
 AFRAME.registerComponent('config-dialog', {
 	schema: {
@@ -455,6 +513,6 @@ AFRAME.registerComponent('config-dialog', {
 	}
 });
 
-window.addEventListener('DOMContentLoaded', (function (e) {
-	document.querySelector("[main-menu]") || instantiate('mainMenuTemplate');
-}), false);
+window.addEventListener('DOMContentLoaded', async (ev) => {
+	(await instantiate('mainMenuTemplate')).id = "mainMenu";
+});
