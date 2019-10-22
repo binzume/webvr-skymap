@@ -123,6 +123,8 @@ AFRAME.registerComponent('celestial-sphere', {
 		if (stars) {
 			stars.setRotationFromAxisAngle(axisZ, -eps);
 			stars.rotateOnAxis(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
+			this.starMaterial.uniforms.magFactor.value = this.data.magFactor;
+			this.starMaterial.uniforms.magOffset.value = this.data.magOffset;
 			// TODO...
 			if (this.constellationLines) {
 				this.constellationLines.quaternion.copy(stars.quaternion);
@@ -345,7 +347,6 @@ AFRAME.registerComponent('celestial-sphere', {
 			}`
 		}
 		let material = new THREE.ShaderMaterial(shaderParams);
-		// let material = new THREE.MeshBasicMaterial({ color: 0x555544, fog: false });
 		let r = this.data.radius * 0.99 * Math.PI * 1.03 / 360;
 		let geometry = new THREE.SphereGeometry(r, 32, 32);
 		let moon = new THREE.Mesh(geometry, material);
@@ -368,24 +369,28 @@ AFRAME.registerComponent('celestial-sphere', {
 				.applyAxisAngle(axisX, -star.dec)
 				.applyAxisAngle(axisY, star.ra);
 
-			let b = Math.max(0.05, Math.pow(this.data.magFactor, star.mag + this.data.magOffset));
 			let t = 4600 * ((1 / ((0.92 * star.bv) + 1.7)) + (1 / ((0.92 * star.bv) + 0.62)));
-			let sz = 3 + (b > 1 ? Math.sqrt(b - 1) * 0.5 : 0);
 			if (t < 6504) {
 				let bg = t / 6504 * 0.3 + 0.7;
-				colors.push(new THREE.Color(b, b * bg, b * bg));
+				colors.push(new THREE.Color(1, bg, bg));
 			} else {
 				let rg = 6504 / t * 0.4 + 0.6;
-				colors.push(new THREE.Color(b * rg, b * rg, b));
+				colors.push(new THREE.Color(rg, rg, 1));
 			}
 			if (star.id != null) pointMap[star.id] = vertices.length;
 			vertices.push(v);
-			sizes.push(sz);
+			sizes.push(star.mag);
 		}
 
+		let uniforms = {
+			magFactor: { value: this.data.magFactor },
+			magOffset: { value: this.data.magOffset }
+		};
 		var starMaterialParams = {
-			uniforms: THREE.ShaderLib.points.uniforms,
+			uniforms: THREE.UniformsUtils.merge([THREE.ShaderLib.points.uniforms, uniforms]),
 			vertexShader: `
+			uniform float magFactor;
+			uniform float magOffset;
 			attribute float size;
 			#include <common>
 			#include <color_pars_vertex>
@@ -393,7 +398,9 @@ AFRAME.registerComponent('celestial-sphere', {
 				#include <color_vertex>
 				#include <begin_vertex>
 				#include <project_vertex>
-				gl_PointSize = size;
+				float b = max(0.05, pow(magFactor, size + magOffset));
+				vColor = vColor * b;
+				gl_PointSize = 3.0 + (b > 1.0 ? sqrt(b - 1.0) * 0.5 : 0.0);	
 			}`,
 			fragmentShader: `
 			uniform vec3 diffuse;
@@ -414,7 +421,6 @@ AFRAME.registerComponent('celestial-sphere', {
 			blending: THREE.AdditiveBlending
 		}
 		var starMaterial = new THREE.ShaderMaterial(starMaterialParams);
-		// starMaterial.uniforms.size.value = 8;
 		this.starMaterial = starMaterial;
 
 
