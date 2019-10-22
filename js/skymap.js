@@ -63,6 +63,7 @@ AFRAME.registerComponent('position-controls', {
 	schema: {
 		arrowkeys: { default: "rotation" },
 		wasdkeys: { default: "translation" },
+		axismove: { default: "translation" },
 		speed: { default: 0.1 },
 		rotationSpeed: { default: 0.1 }
 	},
@@ -145,12 +146,47 @@ AFRAME.registerComponent('position-controls', {
 		});
 		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('axismove', ev => {
 			let direction = ev.target.components.raycaster.raycaster.ray.direction;
-			let rot = Math.atan2(direction.x, direction.z);
-			let v = new THREE.Vector3(-ev.detail.axis[0], 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
-			this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
+			if (this.data.axismove == "translation") {
+				let rot = Math.atan2(direction.x, direction.z);
+				let v = new THREE.Vector3(-ev.detail.axis[0], 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+				this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
+			} else if (this.data.axismove == "rotation") {
+				this.el.object3D.rotateY(-ev.detail.axis[0] * this.data.rotationSpeed * 0.1);
+			} else {
+				let rot = Math.atan2(direction.x, direction.z);
+				let v = new THREE.Vector3(0, 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+				this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
+				this.el.object3D.rotateY(-ev.detail.axis[0] * this.data.rotationSpeed * 0.1);
+			}
 		}));
 	}
 });
+
+
+AFRAME.registerComponent('fill-parent', {
+	dependencies: ['xyrect'],
+	schema: {},
+	async init() {
+		this.el.setAttribute("xyitem", { fixed: true });
+		this.el.parentNode.addEventListener('xyresize', (ev) => {
+			this.el.setAttribute("geometry", { width: ev.detail.xyrect.width, height: ev.detail.xyrect.height });
+			this.el.setAttribute('xyrect', { width: ev.detail.xyrect.width, height: ev.detail.xyrect.height });
+		});
+
+
+		if (!this.el.parentNode.hasLoaded) {
+			await new Promise((resolve, _) => this.el.parentNode.addEventListener('loaded', resolve, { once: true }));
+		}
+
+		let rect = this.el.parentNode.components.xyrect;
+		if (rect) {
+			this.el.setAttribute("geometry", { width: rect.width, height: rect.height });
+		}
+	},
+	remove() {
+	}
+});
+
 
 
 AFRAME.registerShader('msdf2', {
@@ -440,7 +476,7 @@ AFRAME.registerComponent('constellation-selector', {
 			let dd = Math.abs(d), d1 = Math.floor(dd), d2 = Math.floor((dd - d1) * 60);
 			return (d < 0 ? "-" : "") + `${("0" + d1).slice(-2)}${s}${("0" + d2).slice(-2)}'`;
 		};
-		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0] / 360 * 24, "h") + " Dec:" + defformat(coord[1], "d"));
+		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0], "d") + " Dec:" + defformat(coord[1], "d"));
 		this.labelEl.setAttribute('value', c ? `${displayName} (${c.name})` : "");
 		let ray = raycaster.ray;
 		let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
@@ -478,6 +514,11 @@ AFRAME.registerComponent('config-dialog', {
 		this._getEl('gps').addEventListener('click', (e) => {
 			this.getCurrentLocation();
 		});
+		let magOffset = this._getEl('magOffset');
+		magOffset.addEventListener('change', (ev) => {
+			this.targetEl.setAttribute("celestial-sphere", "magOffset", ev.detail.value);
+		});
+		magOffset.setAttribute("value", this.targetEl.getAttribute("celestial-sphere").magOffset);
 		this.showDialog();
 	},
 	remove: function () {
