@@ -472,6 +472,10 @@ AFRAME.registerComponent('constellation-selector', {
 		}
 		let coord = this.sphere.getCoord(raycaster.ray.direction);
 		let displayName = navigator.language.startsWith("ja") ? c.nameJa : c.nameEn;
+		let starData = this.sphere.findStar(raycaster.ray.direction, 0.9998);
+		if (starData) {
+			displayName = (navigator.language.startsWith("ja") ? starData.nameJa || starData.nameEn : starData.nameEn) + " :" + displayName;
+		}
 		let defformat = (d, s) => {
 			let dd = Math.abs(d), d1 = Math.floor(dd), d2 = Math.floor((dd - d1) * 60);
 			return (d < 0 ? "-" : "") + `${("0" + d1).slice(-2)}${s}${("0" + d2).slice(-2)}'`;
@@ -479,7 +483,7 @@ AFRAME.registerComponent('constellation-selector', {
 		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0], "d") + " Dec:" + defformat(coord[1], "d"));
 		this.labelEl.setAttribute('value', c ? `${displayName} (${c.name})` : "");
 		let ray = raycaster.ray;
-		let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
+		// let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
 		this.balloonEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
 		this.balloonEl.object3D.lookAt(ray.origin);
 		// this.balloonEl.object3D.quaternion.copy(rot);

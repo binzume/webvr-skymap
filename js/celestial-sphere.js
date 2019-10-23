@@ -17,6 +17,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		magOffset: { type: 'number', default: -1.0 },
 		radius: { type: 'number', default: 4000 },
 		constellationSrc: { type: 'string', default: "" },
+		starNameSrc: { type: 'string', default: "" },
 		solarsystem: { type: 'boolean', default: true },
 		constellation: { type: 'boolean', default: false },
 		grid: { type: 'boolean', default: false }
@@ -206,6 +207,24 @@ AFRAME.registerComponent('celestial-sphere', {
 		let c = this.constellations[name] || { lineStart: 0, lineCount: Infinity };
 		this.constellationLines.geometry.setDrawRange(c.lineStart, c.lineCount * 2);
 		this._lineAnimation();
+	},
+	findStar: function (direction, r) {
+		if (!this._starNames) {
+			return null;
+		}
+		let q = (this.el.getObject3D('mesh') || this.el.object3D).getWorldQuaternion(new THREE.Quaternion());
+		let d = direction.clone().applyQuaternion(q.inverse());
+		let star = null, max = r;
+		// TODO: BSP-tree
+		for (let sn of this._starNames) {
+			if (!sn.direction) continue;
+			let dd = sn.direction.dot(d);
+			if (dd > max) {
+				max = dd;
+				star = sn;
+			}
+		}
+		return star;
 	},
 	_lineAnimation: function () {
 		clearInterval(this.lineAnimationTimer);
@@ -434,8 +453,22 @@ AFRAME.registerComponent('celestial-sphere', {
 		let points = new THREE.Points(geometry, this.starMaterial);
 		this.el.setObject3D('mesh', points);
 
+		if (this.data.starNameSrc != '') {
+			this._loadStarNames(this.data.starNameSrc, vertices, pointMap);
+		}
 		if (this.data.constellationSrc != '') {
 			this._loadConstellations(this.data.constellationSrc, vertices, pointMap);
+		}
+	},
+	_loadStarNames: async function (src, vertices, pointMap) {
+		let response = await fetch(src);
+		let starNames = await response.json();
+		this._starNames = starNames;
+		for (let sn of this._starNames) {
+			let s = pointMap[sn.id];
+			if (s != null) {
+				sn.direction = vertices[s].clone().normalize();
+			}
 		}
 	},
 	_loadConstellations: async function (src, points, pointMap) {
