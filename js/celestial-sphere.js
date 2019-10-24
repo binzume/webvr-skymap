@@ -189,7 +189,16 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.gridLastUpdated = 0;
 		}
 	},
-	getConstellation: function (raycaster) {
+	getConstellation: function (ra, dec) {
+		let q = (this.el.getObject3D('mesh') || this.el.object3D).getWorldQuaternion(new THREE.Quaternion());
+		let direction = new THREE.Vector3(0, 0, 1)
+			.applyAxisAngle(new THREE.Vector3(1, 0, 0), THREE.Math.degToRad(-dec))
+			.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.Math.degToRad(ra))
+			.applyQuaternion(q);
+		let raycaster = new THREE.Raycaster(new THREE.Vector3(), direction);
+		return this.getConstellation_(raycaster);
+	},
+	getConstellation_: function (raycaster) {
 		if (!this.constellations || !this.constellationBounds) {
 			return null;
 		}
@@ -225,6 +234,29 @@ AFRAME.registerComponent('celestial-sphere', {
 			}
 		}
 		return star;
+	},
+	setCursor: function (ra, dec) {
+		let cursorObj = this.el.getObject3D('cursor');
+		if (cursorObj == null) {
+			cursorObj = new THREE.Group();
+			var geometry = new THREE.RingBufferGeometry(28, 32, 16);
+			var material = new THREE.MeshBasicMaterial({ color: 0x888800, side: THREE.DoubleSide, fog: false });
+			let cursorMesh = new THREE.Mesh(geometry, material);
+			cursorMesh.position.set(0, 0, this.data.radius);
+			cursorObj.add(cursorMesh);
+			this.el.setObject3D('cursor', cursorObj);
+		}
+		cursorObj.quaternion.set(0, 0, 0, 1);
+		cursorObj.rotateY(THREE.Math.degToRad(ra)).rotateX(THREE.Math.degToRad(-dec));
+		if (this.el.getObject3D('mesh')) {
+			cursorObj.quaternion.premultiply(this.el.getObject3D('mesh').quaternion);
+		}
+	},
+	clearCursor: function () {
+		let cursorObj = this.el.getObject3D('cursor');
+		if (cursorObj) {
+			this.el.removeObject3D('cursor');
+		}
 	},
 	_lineAnimation: function () {
 		clearInterval(this.lineAnimationTimer);
@@ -454,13 +486,13 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.el.setObject3D('mesh', points);
 
 		if (this.data.starNameSrc != '') {
-			this._loadStarNames(this.data.starNameSrc, vertices, pointMap);
+			this._loadStarNames(this.data.starNameSrc, vertices, result, pointMap);
 		}
 		if (this.data.constellationSrc != '') {
 			this._loadConstellations(this.data.constellationSrc, vertices, pointMap);
 		}
 	},
-	_loadStarNames: async function (src, vertices, pointMap) {
+	_loadStarNames: async function (src, vertices, result, pointMap) {
 		let response = await fetch(src);
 		let starNames = await response.json();
 		this._starNames = starNames;
@@ -468,6 +500,8 @@ AFRAME.registerComponent('celestial-sphere', {
 			let s = pointMap[sn.id];
 			if (s != null) {
 				sn.direction = vertices[s].clone().normalize();
+				sn.ra = THREE.Math.radToDeg(result[s].ra);
+				sn.dec = THREE.Math.radToDeg(result[s].dec);
 			}
 		}
 	},

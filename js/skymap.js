@@ -465,22 +465,28 @@ AFRAME.registerComponent('constellation-selector', {
 	},
 	tick: function () {
 		let raycaster = this.data.raycaster.components.raycaster.raycaster;
-		let c = this.sphere.getConstellation(raycaster);
+		let coord = this.sphere.getCoord(raycaster.ray.direction);
+		let starData = this.sphere.findStar(raycaster.ray.direction, 0.9998);
+		if (starData) {
+			coord = [starData.ra, starData.dec];
+		}
+		let c = this.sphere.getConstellation(coord[0], coord[1]);
 		if (c !== this.selected) {
 			this.selected = c;
 			this.sphere.selectConstellation(c ? c.name : null);
 		}
-		let coord = this.sphere.getCoord(raycaster.ray.direction);
 		let displayName = navigator.language.startsWith("ja") ? c.nameJa : c.nameEn;
-		let starData = this.sphere.findStar(raycaster.ray.direction, 0.9998);
 		if (starData) {
+			this.sphere.setCursor(starData.ra, starData.dec);
 			displayName = (navigator.language.startsWith("ja") ? starData.nameJa || starData.nameEn : starData.nameEn) + " :" + displayName;
+		} else {
+			this.sphere.clearCursor();
 		}
 		let defformat = (d, s) => {
 			let dd = Math.abs(d), d1 = Math.floor(dd), d2 = Math.floor((dd - d1) * 60);
-			return (d < 0 ? "-" : "") + `${("0" + d1).slice(-2)}${s}${("0" + d2).slice(-2)}'`;
+			return (d < 0 ? "-" : "") + `${d1}${s}${("0" + d2).slice(-2)}'`;
 		};
-		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0], "d") + " Dec:" + defformat(coord[1], "d"));
+		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0], " ") + " Dec:" + defformat(coord[1], " "));
 		this.labelEl.setAttribute('value', c ? `${displayName} (${c.name})` : "");
 		let ray = raycaster.ray;
 		// let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);

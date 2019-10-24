@@ -7,8 +7,8 @@
   <title>WebVR SkyMap</title>
   <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@v0.9.2/dist/aframe-master.min.js"></script>
   <script src="https://binzume.github.io/aframe-xylayout/dist/xylayout-all.min.js?"></script>
-  <script src="js/celestial-sphere.js?2"></script>
-  <script src="js/skymap.js?5"></script>
+  <script src="js/celestial-sphere.js?"></script>
+  <script src="js/skymap.js?"></script>
 </head>
 
 <body style="background-color: black; color:white;">
@@ -97,7 +97,7 @@
 
     <a-entity position="0 0 0" celestial-sphere="src:data/hip_stars.json?;starNameSrc:data/star_names.json;updateIntervalMs:100;speed:1;constellationSrc:data/hip_constellations.json"></a-entity>
 
-    <a-entity id="camera-rig" position-controls="arrowkeys:rotation">
+    <a-entity id="camera-rig" position-controls="arrowkeys:rotation;axismove:rotation2">
       <a-camera position="0 1.5 0" look-controls="enabled:false"></a-camera>
       <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
       <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
