@@ -190,7 +190,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 	},
 	getConstellation: function (ra, dec) {
-		let q = (this.el.getObject3D('mesh') || this.el.object3D).getWorldQuaternion(new THREE.Quaternion());
+		let q = this.el.object3D.getWorldQuaternion(new THREE.Quaternion());
 		let direction = new THREE.Vector3(0, 0, 1)
 			.applyAxisAngle(new THREE.Vector3(1, 0, 0), THREE.Math.degToRad(-dec))
 			.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.Math.degToRad(ra))
@@ -270,7 +270,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		}, 15);
 	},
 	getCoord: function (direction) {
-		let q = this.el.object3D.getWorldQuaternion(new THREE.Quaternion());
+		let q = (this.el.getObject3D('mesh') || this.el.object3D).getWorldQuaternion(new THREE.Quaternion());
 		let d = direction.clone().applyQuaternion(q.inverse());
 		let l = Math.sqrt(d.x * d.x + d.z * d.z);
 		return [(Math.atan2(d.x, d.z) * 180 / Math.PI + 360) % 360, Math.atan2(d.y, l) * 180 / Math.PI];
@@ -617,8 +617,6 @@ AFRAME.registerComponent('celestial-sphere', {
 			wireframe: true, color: 0xff0000, visible: false, fog: false, side: THREE.BackSide
 		});
 		let bounds = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
-		bounds.scale.set(0.1, 0.1, 0.1);
-		bounds.position.set(-18, 0, -8);
 		this.el.object3D.add(bounds);
 		this.constellationBounds = bounds;
 	}
