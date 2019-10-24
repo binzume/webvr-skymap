@@ -484,9 +484,10 @@ AFRAME.registerComponent('constellation-selector', {
 		}
 		let defformat = (d, s) => {
 			let dd = Math.abs(d), d1 = Math.floor(dd), d2 = Math.floor((dd - d1) * 60);
-			return (d < 0 ? "-" : "") + `${d1}${s}${("0" + d2).slice(-2)}'`;
+			return `${d1}${s}${("0" + d2).slice(-2)}`;
 		};
-		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0], " ") + " Dec:" + defformat(coord[1], " "));
+		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0] * 24 / 360, "h") + "m Dec:"
+			+ (coord[1] < 0 ? "-" : "+") + defformat(coord[1], " ") + "'");
 		this.labelEl.setAttribute('value', c ? `${displayName} (${c.name})` : "");
 		let ray = raycaster.ray;
 		// let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
