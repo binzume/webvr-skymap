@@ -9,7 +9,7 @@ constellationIds = {}
 names = {}
 open(ARGV[0] || "constellation_name_utf8.csv").read.lines{|line|
     row = line.chomp.split(',')
-    c = {name: row[1], nameEn: row[2], nameJa: row[3]}
+    c = {name: row[1], nameEn: row[2].gsub(/\(.+\)/,''), nameJa: row[3].gsub(/\(.+\)/,'')}
     constellationIds[row[0]] = c
     names[c[:name]] = c
 }
@@ -41,6 +41,13 @@ open(ARGV[0] || "hip_constellation_line.csv").read.lines.each{|line|
     constellations[row[0]] = {name: row[0], nameEn: names[row[0]][:nameEn], nameJa: names[row[0]][:nameJa], lines: [], boundary: boundaries[row[0]] || []} unless constellations[row[0]]
     constellations[row[0]][:lines] << row[1].to_i << row[2].to_i
 }
+
+# ccw
+boundary = []
+constellations["Oct"][:boundary][0].each_slice(2) {|b|
+    boundary.unshift(b[0], b[1])
+}
+constellations["Oct"][:boundary][0] = boundary;
 
 print "["
 constellations.values.each_with_index{|c,i|
