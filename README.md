@@ -12,7 +12,6 @@ Live DEMO: https://binzume.github.io/webvr-skymap/
 ## TODO
 
 - 検索機能
-- 惑星名，星座境界の表示
 - まともなUI
 
 ## 利用しているデータ

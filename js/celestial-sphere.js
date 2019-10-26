@@ -622,9 +622,10 @@ AFRAME.registerComponent('celestial-sphere', {
 				.applyAxisAngle(axisY, ra * Math.PI / 180);
 		});
 		let boundaryMaterial = new THREE.MeshBasicMaterial({
-			color: 0x000033, visible: false, fog: false, side: THREE.BackSide
+			color: 0x000022, fog: false, side: THREE.BackSide
 		});
 		let bounds = new THREE.LineSegments(boundaryGeometry, boundaryMaterial);
+		bounds.visible = false;
 		this.constellationLines.add(bounds);
 		this.constellationBounds = bounds;
 	}

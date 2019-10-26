@@ -358,6 +358,7 @@ AFRAME.registerComponent('main-menu', {
 			let v = !sphereEl.getAttribute("celestial-sphere").grid;
 			sphereEl.setAttribute("celestial-sphere", "grid", v);
 			this._getEl('drawgrid').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
+			if (sphereEl.components['celestial-sphere'].constellationBounds) sphereEl.components['celestial-sphere'].constellationBounds.visible = v;
 		});
 		this._getEl('drawsol').addEventListener('click', (e) => {
 			let v = !sphereEl.getAttribute("celestial-sphere").solarsystem;
