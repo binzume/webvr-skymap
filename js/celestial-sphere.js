@@ -190,27 +190,42 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 	},
 	getConstellation: function (ra, dec) {
-		let q = this.el.object3D.getWorldQuaternion(new THREE.Quaternion());
-		let direction = new THREE.Vector3(0, 0, 1)
-			.applyAxisAngle(new THREE.Vector3(1, 0, 0), THREE.Math.degToRad(-dec))
-			.applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.Math.degToRad(ra))
-			.applyQuaternion(q);
-		let raycaster = new THREE.Raycaster(new THREE.Vector3(), direction);
-		return this.getConstellation_(raycaster);
-	},
-	getConstellation_: function (raycaster) {
-		if (!this.constellations || !this.constellationBounds) {
+		if (!this.constellations) {
 			return null;
 		}
-		let intersecs = raycaster.intersectObject(this.constellationBounds);
-		if (intersecs.length == 0) {
-			return null;
+		for (let cc in this.constellations) {
+			for (let boundary of this.constellations[cc].boundary) {
+				let n = 0;
+				for (let i = 0; i < boundary.length / 2; i++) {
+					let ra0 = boundary[i * 2], ra1 = boundary[(i * 2 + 2) % boundary.length];
+					let dec0 = boundary[i * 2 + 1], dec1 = boundary[(i * 2 + 3) % boundary.length];
+					if (ra1 - ra0 > 180) {
+						ra0 += 360;
+					} else if (ra0 - ra1 > 180) {
+						ra1 += 360;
+					}
+					if (ra < ra0 && ra < ra1) {
+						ra0 -= 360;
+						ra1 -= 360;
+					}
+					if (ra0 <= ra && ra1 > ra || ra0 > ra && ra1 <= ra) {
+						let t = (ra - ra0) / (ra1 - ra0);
+						if (dec < dec0 + (t * (dec1 - dec0))) {
+							n += ra0 > ra ? -1 : 1;
+						} else {
+							n += ra1 > ra ? -1 : 1;
+						}
+					}
+				}
+				if (n < 0 || n >= 2) { // TODO: fix boundary data...
+					return this.constellations[cc];
+				}
+			}
 		}
-		let n = this.constellationMaterialIndices[intersecs[0].face.materialIndex];
-		return n && this.constellations[n];
+		return null;
 	},
 	selectConstellation: function (name) {
-		if (!this.constellations || !this.constellationBounds) {
+		if (!this.constellations) {
 			return;
 		}
 		let c = this.constellations[name] || { lineStart: 0, lineCount: Infinity };
@@ -221,9 +236,9 @@ AFRAME.registerComponent('celestial-sphere', {
 		if (!this._starNames) {
 			return null;
 		}
+		let star = null, max = r;
 		let q = (this.el.getObject3D('mesh') || this.el.object3D).getWorldQuaternion(new THREE.Quaternion());
 		let d = direction.clone().applyQuaternion(q.inverse());
-		let star = null, max = r;
 		// TODO: BSP-tree
 		for (let sn of this._starNames) {
 			if (!sn.direction) continue;
@@ -231,6 +246,19 @@ AFRAME.registerComponent('celestial-sphere', {
 			if (dd > max) {
 				max = dd;
 				star = sn;
+			}
+		}
+		if (this.solarSystem && this.solarSystem.visible) {
+			let q = this.solarSystem.getWorldQuaternion(new THREE.Quaternion());
+			let d = direction.clone().applyQuaternion(q.clone().inverse());
+			for (let i = 0; i < this.oe.planets.length; i++) {
+				let pd = this.planets[i].position.clone().normalize();
+				let dd = pd.dot(d);
+				if (dd > max) {
+					max = dd;
+					let coord = this.getCoord(pd.applyQuaternion(q));
+					star = { nameEn: this.oe.planets[i].name, direction: pd, ra: coord[0], dec: coord[1] };
+				}
 			}
 		}
 		return star;
@@ -538,8 +566,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 		let material = new THREE.ShaderMaterial(shaderParams);
 		material.uniforms.diffuse.value = new THREE.Color(0x002244);
-		let boundaryShapes = [];
-		let materialIndexToName = [];
+		let boundaryVerts = [];
 		this.constellations = {};
 		let lineVerts = [], lineDists = [];
 		constellations.forEach((c) => {
@@ -568,29 +595,10 @@ AFRAME.registerComponent('celestial-sphere', {
 
 			c.boundary.forEach(b => {
 				// b : [ra,dec,ra,dec,...]
-				let shape = new THREE.Shape();
-				let lastRa = b[0];
-				for (let i = 0; i < b.length / 2; i++) {
-					let ra = b[i * 2], dec = b[i * 2 + 1];
-					if (ra - lastRa > 180) {
-						ra -= 360;
-					} else if (ra - lastRa < -180) {
-						ra += 360;
-					}
-					if (i == 0) {
-						shape.moveTo(ra, dec);
-					} else {
-						shape.lineTo(ra, dec);
-					}
-					lastRa = ra;
+				for (let i = 0; i < b.length / 2 - 1; i++) {
+					boundaryVerts.push(new THREE.Vector3(b[i * 2], b[i * 2 + 1], 0));
+					boundaryVerts.push(new THREE.Vector3(b[(i * 2 + 2) % b.length], b[(i * 2 + 3) % b.length], 0));
 				}
-				// UMi, Oct...
-				if (b[0] - lastRa < -180) {
-					shape.lineTo(lastRa, b[1] > 0 ? 90 : -90);
-					shape.lineTo(b[0], b[1] > 0 ? 90 : -90);
-				}
-				materialIndexToName.push(c.name);
-				boundaryShapes.push(shape);
 			});
 		});
 
@@ -602,9 +610,9 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.el.object3D.add(line);
 		this.constellationLines = line;
 		this.constellationLines.visible = this.data.constellation;
-		this.constellationMaterialIndices = materialIndexToName;
 
-		let boundaryGeometry = new THREE.ShapeGeometry(boundaryShapes);
+		let boundaryGeometry = new THREE.Geometry();
+		boundaryGeometry.vertices = boundaryVerts;
 		const axisY = new THREE.Vector3(0, 1, 0);
 		const axisX = new THREE.Vector3(1, 0, 0);
 		boundaryGeometry.vertices.forEach((v) => {
@@ -614,10 +622,10 @@ AFRAME.registerComponent('celestial-sphere', {
 				.applyAxisAngle(axisY, ra * Math.PI / 180);
 		});
 		let boundaryMaterial = new THREE.MeshBasicMaterial({
-			wireframe: true, color: 0xff0000, visible: false, fog: false, side: THREE.BackSide
+			color: 0x000033, visible: false, fog: false, side: THREE.BackSide
 		});
-		let bounds = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
-		this.el.object3D.add(bounds);
+		let bounds = new THREE.LineSegments(boundaryGeometry, boundaryMaterial);
+		this.constellationLines.add(bounds);
 		this.constellationBounds = bounds;
 	}
 });
