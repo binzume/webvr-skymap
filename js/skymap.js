@@ -1,7 +1,5 @@
 "use strict";
 
-AFRAME.ASSETS_PATH = "./3rdparty/assets"; // assets for a-frame-material
-
 async function instantiate(id, parent) {
 	let template = document.getElementById(id);
 	let base = location.href;
@@ -196,7 +194,7 @@ AFRAME.registerShader('msdf2', {
 		src: { type: 'map', is: 'uniform' },
 		offset: { type: 'vec2', is: 'uniform', default: { x: 0, y: 0 } },
 		repeat: { type: 'vec2', is: 'uniform', default: { x: 1, y: 1 } },
-		msdfUnit: { type: 'vec2', is: 'uniform', default: { x: 0.1, y: 0.1 } },
+		msdfUnit: { type: 'vec2', is: 'uniform', default: { x: 0.03, y: 0.03 } },
 	},
 	init: function (data) {
 		this.attributes = this.initVariables(data, 'attribute');
@@ -409,12 +407,12 @@ AFRAME.registerComponent('main-menu', {
 			this._modifyTime(sphereEl, d => d.setSeconds(d.getSeconds() - 1));
 		});
 		this._getEl('selector').addEventListener('click', ev => {
-			let component = 'constellation-selector';
-			let v = !this.el.hasAttribute(component);
-			if (this.el.hasAttribute(component)) {
-				this.el.removeAttribute(component);
+			let component = 'celestial-cursor';
+			let v = !sphereEl.hasAttribute(component);
+			if (v) {
+				sphereEl.setAttribute(component, { raycaster: ev.detail.cursorEl });
 			} else {
-				this.el.setAttribute(component, { raycaster: ev.detail.cursorEl });
+				sphereEl.removeAttribute(component);
 			}
 			this._getEl('selector').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
 		});
@@ -440,7 +438,7 @@ AFRAME.registerComponent('main-menu', {
 	}
 });
 
-AFRAME.registerComponent('constellation-selector', {
+AFRAME.registerComponent('celestial-cursor', {
 	schema: {
 		raycaster: { type: 'selector', default: "[raycaster]" }
 	},
@@ -490,10 +488,8 @@ AFRAME.registerComponent('constellation-selector', {
 			+ (coord[1] < 0 ? "-" : "+") + defformat(coord[1], " ") + "'");
 		this.labelEl.setAttribute('value', c ? `${displayName} (${c.name})` : "");
 		let ray = raycaster.ray;
-		// let rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), ray.direction);
 		this.balloonEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
 		this.balloonEl.object3D.lookAt(ray.origin);
-		// this.balloonEl.object3D.quaternion.copy(rot);
 	},
 	remove: function () {
 		this.el.sceneEl.removeChild(this.balloonEl);
