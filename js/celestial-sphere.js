@@ -131,13 +131,15 @@ AFRAME.registerComponent('celestial-sphere', {
 				this.constellationLines.quaternion.copy(stars.quaternion);
 			}
 		}
+		if (this.constellationLines) {
+			this.constellationLines.visible = this.data.constellation;
+		}
 
-		this.solarSystem.visible = this.data.solarsystem;
-		if (this.solarSystem.visible) {
-			let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, eps);
-			this.solarSystem.setRotationFromAxisAngle(axisZ, -eps);
-			this.solarSystem.rotateOnAxis(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
-			this.solarSystem.rotateOnAxis(oev, d);
+		if (this.solarSystem) {
+			this.solarSystem.visible = this.data.solarsystem;
+		}
+		if (this.solarSystem && this.solarSystem.visible) {
+			this.solarSystem.setRotationFromAxisAngle(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
 
 			{
 				// moon
@@ -147,11 +149,11 @@ AFRAME.registerComponent('celestial-sphere', {
 				let o = this._calc4(params.o, T) * degToRad;
 				let i = this._calc2(params.i, T) * degToRad;
 				let md = 2 * this._calc2(params.e, T) * Math.sin(m);
-				let ov = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, i).applyAxisAngle(axisY, o).applyAxisAngle(axisZ, eps);
-				// let pos = new THREE.Vector3(0, 0, 1)
-				//	.applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md).applyAxisAngle(axisZ, eps).applyAxisAngle(oev, -d);
-				let pos = new THREE.Vector3(1, 0, 0).cross(ov).applyAxisAngle(ov, l + md).applyAxisAngle(oev, -d);
-				this.moon.position.copy(pos.multiplyScalar(this.data.radius * 0.98));
+				let ov = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, i).applyAxisAngle(axisY, o);
+				// let pos = new THREE.Vector3(0, 0, 1).applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md);
+				let pos = new THREE.Vector3(1, 0, 0).cross(ov.clone().applyAxisAngle(axisZ, eps)).applyAxisAngle(axisZ, -eps).applyAxisAngle(ov, l + md);
+				this.moon.setRotationFromAxisAngle(axisY, d);
+				this.moon.position.copy(pos).multiplyScalar(this.data.radius * 0.98);
 			}
 
 			// planets
@@ -166,24 +168,22 @@ AFRAME.registerComponent('celestial-sphere', {
 				let ov = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, i).applyAxisAngle(axisY, o);
 				let pos = new THREE.Vector3(0, 0, this._calc2(params.a, T))
 					.applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md);
-				let rpos = pos.clone().sub(earthPos).applyAxisAngle(axisY, -d).applyAxisAngle(axisZ, eps);
+				let rpos = pos.clone().sub(earthPos);
 
 				let au = rpos.length();
 				let tt = this.data.radius * (0.99 + Math.log(au) * 0.001);
 				let scale = Math.max(tt / au / 1.496e8 * 2, tt * 0.1 / 360 * Math.PI / params.size);
 				this.planets[p].scale.set(scale, scale, scale);
-				this.planets[p].position.copy(rpos.normalize().multiplyScalar(tt));
+				this.planets[p].position.copy(rpos).normalize().multiplyScalar(tt);
 			}
 		}
 
 		let er = d + (time % 86400 / 86400 + this.data.lng / 360) * 2 * Math.PI;
 		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), -er, 0);
-		if (this.constellationLines) {
-			this.constellationLines.visible = this.data.constellation;
-		}
 		if (this.data.grid) {
-			if (Math.abs(this.gridLastUpdated - this.data.timeMs) > 3600000) {
-				this._makeGrid(48 * 2);
+			if (Math.abs(this.gridLastUpdated - time) > 3600) {
+				this.gridLastUpdated = time;
+				this._makeGrid(48 * 2, T);
 			}
 		} else if (this.gridPoints !== null) {
 			this.el.object3D.remove(this.gridPoints);
@@ -311,17 +311,14 @@ AFRAME.registerComponent('celestial-sphere', {
 	_calc2: function (param, t) {
 		return param[0] + param[1] * t;
 	},
-	_makeGrid: function (d) {
+	_makeGrid: function (d, T) {
 		if (this.gridPoints) {
 			this.el.object3D.remove(this.gridPoints);
 		}
 		const degToRad = Math.PI / 180;
-		let time = this.data.timeMs / 1000.0 - this.epoch;
-		let T = time / (36525 * 86400);
 		let eps = this._calc4(this.oe.earth.eps, T) * degToRad / 3600;
 		let psi = this._calc4(this.oe.earth.psi, T) * degToRad / 3600;
 
-		this.gridLastUpdated = this.data.timeMs;
 		let geometry = new THREE.Geometry();
 		const axisY = new THREE.Vector3(0, 1, 0);
 		const axisZ = new THREE.Vector3(0, 0, 1);
