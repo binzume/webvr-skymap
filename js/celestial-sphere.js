@@ -38,37 +38,37 @@ AFRAME.registerComponent('celestial-sphere', {
 			moon: {
 				name: "Moon", color: 0x888877, size: 1737.1,
 				a: [0.0025, 0], e: [0.055545526, 0.000000016], i: [5.15668983, -0.00008 / 3600],
-				l: [218.31664563, 1732559343.48470 / 3600, -6.3910 / 3600, 0.006588 / 3600],
-				o: [125.04455501, -6967919.3631 / 3600, 6.3602 / 3600, 0.007625 / 3600],
-				p: [83.35324312, 14643420.2669 / 3600, -38.2702 / 3600, -0.045047 / 3600]
+				l: [218.31664563, 1732564372.30470 / 3600, -5.2790 / 3600, 0.006665 / 3600],
+				o: [125.04455501, -6962890.5431 / 3600, 7.4722 / 3600, 0.007702 / 3600],
+				p: [83.35324312, 14648449.0869 / 3600, -37.1582 / 3600, -0.044970 / 3600]
 			},
 			planets: [
 				{
-					name: "Sun", color: 0xffffee, size: 696000,
+					name: "Sun", nameJa: "太陽", color: 0xffffee, size: 696000,
 					a: [0, 0], e: [0, 0], i: [0, 0], l: [0, 0], p: [0, 0], o: [0, 0]
 				},
 				{
-					name: "Mercury", color: 0x998855, size: 2439.7,
+					name: "Mercury", nameJa: "水星", color: 0x998855, size: 2439.7,
 					a: [0.38709927, 3.7e-07], e: [0.20563593, 1.906e-05], i: [7.00497902, -0.00594749],
 					l: [252.2503235, 149472.67411175], p: [77.45779628, 0.16047689], o: [48.33076593, -0.12534081]
 				},
 				{
-					name: "Venus", color: 0xffeecc, size: 6051.8,
+					name: "Venus", nameJa: "金星", color: 0xffeecc, size: 6051.8,
 					a: [0.72333566, 3.9e-06], e: [0.00677672, -4.107e-05], i: [3.39467605, -0.0007889],
 					l: [181.9790995, 58517.81538729], p: [131.60246718, 0.00268329], o: [76.67984255, -0.27769418]
 				},
 				{
-					name: "Mars", color: 0x705044, size: 3390.0,
+					name: "Mars", nameJa: "火星", color: 0x665044, size: 3390.0,
 					a: [1.52371034, 1.847e-05], e: [0.0933941, 7.882e-05], i: [1.84969142, -0.00813131],
 					l: [-4.55343205, 19140.30268499], p: [-23.94362959, 0.44441088], o: [49.55953891, -0.29257343]
 				},
 				{
-					name: "Jupiter", color: 0xddbb88, size: 69911,
+					name: "Jupiter", nameJa: "木星", color: 0xddbb88, size: 69911,
 					a: [5.202887, -0.00011607], e: [0.04838624, -0.00013253], i: [1.30439695, -0.00183714],
 					l: [34.39644051, 3034.74612775], p: [14.72847983, 0.21252668], o: [100.47390909, 0.20469106]
 				},
 				{
-					name: "Saturn", color: 0xddcccc, size: 58232,
+					name: "Saturn", nameJa: "土星", color: 0xddcccc, size: 58232,
 					a: [9.53667594, -0.0012506], e: [0.05386179, -0.00050991], i: [2.48599187, 0.00193609],
 					l: [49.95424423, 1222.49362201], p: [92.59887831, -0.41897216], o: [113.66242448, -0.28867794]
 				},
@@ -150,8 +150,7 @@ AFRAME.registerComponent('celestial-sphere', {
 				let i = this._calc2(params.i, T) * degToRad;
 				let md = 2 * this._calc2(params.e, T) * Math.sin(m);
 				let ov = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ, i).applyAxisAngle(axisY, o);
-				// let pos = new THREE.Vector3(0, 0, 1).applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md);
-				let pos = new THREE.Vector3(1, 0, 0).cross(ov.clone().applyAxisAngle(axisZ, eps)).applyAxisAngle(axisZ, -eps).applyAxisAngle(ov, l + md);
+				let pos = new THREE.Vector3(0, 0, 1).applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md);
 				this.moon.setRotationFromAxisAngle(axisY, d);
 				this.moon.position.copy(pos).multiplyScalar(this.data.radius * 0.98);
 			}
@@ -259,7 +258,8 @@ AFRAME.registerComponent('celestial-sphere', {
 				if (dd > max) {
 					max = dd;
 					let coord = this.getCoord(pd.applyQuaternion(q));
-					star = { nameEn: this.oe.planets[i].name, direction: pd, ra: coord[0], dec: coord[1] };
+					let p = this.oe.planets[i];
+					star = { nameEn: p.name, nameJa: p.nameJa, direction: pd, ra: coord[0], dec: coord[1], type: "solar" };
 				}
 			}
 		}

@@ -162,29 +162,18 @@ AFRAME.registerComponent('position-controls', {
 
 
 AFRAME.registerComponent('fill-parent', {
-	dependencies: ['xyrect'],
-	schema: {},
 	async init() {
-		this.el.setAttribute("xyitem", { fixed: true });
-		this.el.parentNode.addEventListener('xyresize', (ev) => {
-			this.el.setAttribute("geometry", { width: ev.detail.xyrect.width, height: ev.detail.xyrect.height });
-			this.el.setAttribute('xyrect', { width: ev.detail.xyrect.width, height: ev.detail.xyrect.height });
-		});
-
-
-		if (!this.el.parentNode.hasLoaded) {
-			await new Promise((resolve, _) => this.el.parentNode.addEventListener('loaded', resolve, { once: true }));
+		let el = this.el;
+		let parentEl = el.parentNode;
+		el.setAttribute("xyitem", { fixed: true });
+		if (!parentEl.hasLoaded) {
+			await new Promise((resolve, _) => parentEl.addEventListener('loaded', resolve, { once: true }));
 		}
-
-		let rect = this.el.parentNode.components.xyrect;
-		if (rect) {
-			this.el.setAttribute("geometry", { width: rect.width, height: rect.height });
-		}
-	},
-	remove() {
+		let resize = (rect) => rect && el.setAttribute("xyrect", { width: rect.width, height: rect.height, updateGeometry: true });
+		parentEl.addEventListener('xyresize', (ev) => resize(ev.detail.xyrect));
+		resize(parentEl.components.xyrect);
 	}
 });
-
 
 
 AFRAME.registerShader('msdf2', {
@@ -468,18 +457,23 @@ AFRAME.registerComponent('celestial-cursor', {
 		let starData = this.sphere.findStar(raycaster.ray.direction, 0.9998);
 		if (starData) {
 			coord = [starData.ra, starData.dec];
+			this.sphere.setCursor(starData.ra, starData.dec);
+		} else {
+			this.sphere.clearCursor();
 		}
 		let c = this.sphere.getConstellation(coord[0], coord[1]);
 		if (c !== this.selected) {
 			this.selected = c;
 			this.sphere.selectConstellation(c ? c.name : null);
 		}
-		let displayName = navigator.language.startsWith("ja") ? c.nameJa : c.nameEn;
+		let displayName = c ? (navigator.language.startsWith("ja") ? c.nameJa : c.nameEn) + ` (${c.name})` : "";
 		if (starData) {
-			this.sphere.setCursor(starData.ra, starData.dec);
-			displayName = (navigator.language.startsWith("ja") ? starData.nameJa || starData.nameEn : starData.nameEn) + " :" + displayName;
-		} else {
-			this.sphere.clearCursor();
+			let starName = (navigator.language.startsWith("ja") ? starData.nameJa || starData.nameEn : starData.nameEn);
+			if (starData.type == "solar") {
+				displayName = starName;
+			} else {
+				displayName = starName + " :" + displayName;
+			}
 		}
 		let defformat = (d, s) => {
 			let dd = Math.abs(d), d1 = Math.floor(dd), d2 = Math.floor((dd - d1) * 60);
@@ -487,7 +481,7 @@ AFRAME.registerComponent('celestial-cursor', {
 		};
 		this.coodEl.setAttribute('value', "RA:" + defformat(coord[0] * 24 / 360, "h") + "m Dec:"
 			+ (coord[1] < 0 ? "-" : "+") + defformat(coord[1], " ") + "'");
-		this.labelEl.setAttribute('value', c ? `${displayName} (${c.name})` : "");
+		this.labelEl.setAttribute('value', displayName);
 		let ray = raycaster.ray;
 		this.balloonEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
 		this.balloonEl.object3D.lookAt(ray.origin);
