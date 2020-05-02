@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>WebVR SkyMap</title>
-  <script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@v1.0.4/dist/aframe-master.min.js"></script>
+  <script src="https://binzume.github.io/aframe/dist/aframe-master.min.js"></script>
   <script src="https://binzume.github.io/aframe-xylayout/dist/xylayout-all.min.js?"></script>
   <script src="js/celestial-sphere.js?"></script>
   <script src="js/skymap.js?"></script>
@@ -13,6 +13,7 @@
 
 <body style="background-color: black; color:white;">
   <a-scene fog="type: linear; color: #000; near:10;far:50;" renderer="antialias:true;">
+    <a-entity  cursor="rayOrigin: mouse; fuse:false" raycaster="objects:.collidable"></a-entity>
     <a-sky class="collidable" instantiate-on-click="template:mainMenuTemplate;id:mainMenu;align:raycaster" radius="5000"></a-sky>
 
     <a-assets>
@@ -98,8 +99,8 @@
 
     <a-entity id="camera-rig" position-controls="arrowkeys:rotation;axismove:rotation">
       <a-camera position="0 1.5 0" look-controls="enabled:false"></a-camera>
-      <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
-      <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.collidable,.clickable,a-rounded" line="color: #3060a0; opacity: 0.5"></a-entity>
+      <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.collidable" line="color: #3060a0; opacity: 0.5"></a-entity>
+      <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.collidable" line="color: #3060a0; opacity: 0.5"></a-entity>
       <!-- kbd -->
       <a-entity position="0 0.8 -3">
         <a-xykeyboard></a-xykeyboard>

@@ -142,19 +142,19 @@ AFRAME.registerComponent('position-controls', {
 			});
 			this.changed = [];
 		});
-		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('axismove', ev => {
+		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('thumbstickmoved', ev => {
 			let direction = ev.target.components.raycaster.raycaster.ray.direction;
 			if (this.data.axismove == "translation") {
 				let rot = Math.atan2(direction.x, direction.z);
-				let v = new THREE.Vector3(-ev.detail.axis[0], 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+				let v = new THREE.Vector3(-ev.detail.x, 0, -ev.detail.y).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
 				this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
 			} else if (this.data.axismove == "rotation") {
-				this.el.object3D.rotateY(-ev.detail.axis[0] * this.data.rotationSpeed * 0.1);
+				this.el.object3D.rotateY(-(ev.detail.x) * this.data.rotationSpeed * 0.1);
 			} else {
 				let rot = Math.atan2(direction.x, direction.z);
-				let v = new THREE.Vector3(0, 0, -ev.detail.axis[1]).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+				let v = new THREE.Vector3(0, 0, -ev.detail.y).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
 				this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
-				this.el.object3D.rotateY(-ev.detail.axis[0] * this.data.rotationSpeed * 0.1);
+				this.el.object3D.rotateY(-ev.detail.x * this.data.rotationSpeed * 0.1);
 			}
 		}));
 	}
