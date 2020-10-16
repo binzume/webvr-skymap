@@ -4,10 +4,10 @@ async function instantiate(id, parent) {
 	let template = document.getElementById(id);
 	let base = location.href;
 	if (template.dataset.location) {
-		// TODO: cache
 		base = new URL(template.dataset.location, base);
-		let response = await fetch(template.dataset.location);
-		let doc = new DOMParser().parseFromString(await response.text(), "text/html")
+		let loader = document.querySelector('a-assets').fileLoader;
+		let response = await new Promise((resolve, reject) => loader.load(template.dataset.location, resolve, null, reject));
+		let doc = new DOMParser().parseFromString(response, 'text/html');
 		template = doc.getElementById(id);
 	}
 	let wrapper = document.createElement('div');
@@ -18,15 +18,66 @@ async function instantiate(id, parent) {
 	if (mod) {
 		await import(new URL(mod, base));
 	}
-	(parent || document.querySelector("a-scene")).appendChild(el);
+	(parent || document.querySelector('a-scene')).appendChild(el);
 	return el;
 }
 
+AFRAME.registerComponent('window-locator', {
+	schema: {
+		applyCameraPos: { default: true },
+		updateRotation: { default: true },
+		interval: { default: 0.25 },
+		groundLevel: { default: 0 }
+	},
+	init() {
+		this.el.sceneEl.addEventListener('enter-vr', ev => {
+			this.updateRotation();
+		});
+		this.el.sceneEl.addEventListener('exit-vr', ev => {
+			let q = this.el.sceneEl.camera.getWorldQuaternion(new THREE.Quaternion());
+			this.el.object3D.setRotationFromQuaternion(q);
+		});
+	},
+	update(oldData) {
+		let el = this.el;
+		let windows = el.sceneEl.systems.xywindow.windows;
+		if (el.sceneEl.is('vr-mode') && this.data.updateRotation) {
+			this.updateRotation();
+		}
+
+		let pos = new THREE.Vector3().add(el.getAttribute('position'));
+		if (!oldData.applyCameraPos && this.data.applyCameraPos) {
+			pos.add(el.sceneEl.camera.getWorldPosition(new THREE.Vector3()));
+			if (this.el.components.xyrect) {
+				pos.y = Math.max(pos.y, this.data.groundLevel + this.el.components.xyrect.height / 2);
+			}
+		}
+
+		let dd = this.data.interval;
+		let d = el.object3D.getWorldDirection(new THREE.Vector3()).multiplyScalar(dd);
+		for (let i = 0; i < 16; i++) {
+			if (windows.every(window => window.el == el || window.el.object3D.position.distanceToSquared(pos) > dd * dd)) {
+				break;
+			}
+			pos.add(d);
+		}
+		el.setAttribute('position', pos);
+	},
+	updateRotation() {
+		let tr = new THREE.Matrix4();
+		let cameraPosition = this.el.sceneEl.camera.getWorldPosition(new THREE.Vector3());
+		let targetPosition = this.el.object3D.getWorldPosition(new THREE.Vector3());
+		tr.lookAt(cameraPosition, targetPosition, new THREE.Vector3(0, 1, 0));
+		let q = new THREE.Quaternion().setFromRotationMatrix(tr);
+		this.el.object3D.setRotationFromQuaternion(q);
+	}
+});
+
 AFRAME.registerComponent('instantiate-on-click', {
 	schema: {
-		template: { type: 'string', default: "" },
-		id: { type: 'string', default: "" },
-		align: { type: 'string', default: "" }
+		template: { type: 'string', default: '' },
+		id: { type: 'string', default: '' },
+		align: { type: 'string', default: '' }
 	},
 	init() {
 		this.el.addEventListener('click', async (ev) => {
@@ -37,7 +88,7 @@ AFRAME.registerComponent('instantiate-on-click', {
 			if (this.data.id) {
 				el.id = this.data.id;
 			}
-			if (this.data.align == "raycaster") {
+			if (this.data.align == 'raycaster') {
 				if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
 					return;
 				}
@@ -45,12 +96,11 @@ AFRAME.registerComponent('instantiate-on-click', {
 				var rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
 				var origin = raycaster.ray.origin;
 
-				el.addEventListener('loaded', function onLoaded(ev) {
-					el.removeEventListener('loaded', onLoaded, false);
-					let pos = new THREE.Vector3().add(el.getAttribute("position")).applyQuaternion(rot);
-					el.setAttribute("position", pos.add(origin));
-					el.object3D.quaternion.copy(rot);
-				}, false);
+				el.addEventListener('loaded', (ev) => {
+					let pos = new THREE.Vector3(0, 0, el.getAttribute('position').z).applyQuaternion(rot);
+					el.setAttribute('position', pos.add(origin));
+					el.components['window-locator'] && el.components['window-locator'].updateRotation();
+				}, { once: true });
 			}
 		});
 	}
@@ -169,11 +219,12 @@ AFRAME.registerComponent('fill-parent', {
 		if (!parentEl.hasLoaded) {
 			await new Promise((resolve, _) => parentEl.addEventListener('loaded', resolve, { once: true }));
 		}
-		let resize = (rect) => rect && el.setAttribute("xyrect", { width: rect.width, height: rect.height, updateGeometry: true });
+		let resize = (rect) => rect && el.setAttribute("geometry", { width: rect.width, height: rect.height });
 		parentEl.addEventListener('xyresize', (ev) => resize(ev.detail.xyrect));
 		resize(parentEl.components.xyrect);
 	}
 });
+
 
 
 AFRAME.registerShader('msdf2', {
@@ -183,7 +234,7 @@ AFRAME.registerShader('msdf2', {
 		src: { type: 'map', is: 'uniform' },
 		offset: { type: 'vec2', is: 'uniform', default: { x: 0, y: 0 } },
 		repeat: { type: 'vec2', is: 'uniform', default: { x: 1, y: 1 } },
-		msdfUnit: { type: 'vec2', is: 'uniform', default: { x: 0.03, y: 0.03 } },
+		msdfUnit: { type: 'vec2', is: 'uniform', default: { x: 0.1, y: 0.1 } },
 	},
 	init: function (data) {
 		this.attributes = this.initVariables(data, 'attribute');
@@ -216,7 +267,7 @@ AFRAME.registerShader('msdf2', {
 		#include <fog_vertex>
 	}`,
 	fragmentShader: `
-	#extension GL_OES_standard_derivatives : enable
+	// #extension GL_OES_standard_derivatives : enable
 	uniform vec3 diffuse;
 	uniform float opacity;
 	uniform vec2 msdfUnit;
@@ -233,8 +284,8 @@ AFRAME.registerShader('msdf2', {
 	}
 	void main() {
 		#include <clipping_planes_fragment>
-		vec4 sample = texture2D( src, vUv );
-		float sigDist = median(sample.r, sample.g, sample.b) - 0.5;
+		vec4 texcol = texture2D( src, vUv );
+		float sigDist = median(texcol.r, texcol.g, texcol.b) - 0.5;
 		sigDist *= dot(msdfUnit, 0.5/fwidth(vUv));
 
 		vec4 diffuseColor = vec4( diffuse, opacity * clamp(sigDist + 0.5, 0.0, 1.0));

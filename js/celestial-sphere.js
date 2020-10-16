@@ -495,11 +495,11 @@ AFRAME.registerComponent('celestial-sphere', {
 
 		let geometry = new THREE.BufferGeometry();
 		let positionAttr = new THREE.BufferAttribute(new Float32Array(vertices.length * 3), 3).copyVector3sArray(vertices);
-		geometry.addAttribute('position', positionAttr);
+		geometry.setAttribute('position', positionAttr);
 		let colorAttr = new THREE.BufferAttribute(new Float32Array(colors.length * 3), 3).copyColorsArray(colors);
-		geometry.addAttribute('color', colorAttr);
+		geometry.setAttribute('color', colorAttr);
 		let sizeAttr = new THREE.BufferAttribute(Float32Array.from(sizes), 1);
-		geometry.addAttribute('size', sizeAttr);
+		geometry.setAttribute('size', sizeAttr);
 		let points = new THREE.Points(geometry, this.starMaterial);
 		this.el.setObject3D('mesh', points);
 
@@ -593,8 +593,8 @@ AFRAME.registerComponent('celestial-sphere', {
 		});
 
 		let geometry = new THREE.BufferGeometry();
-		geometry.addAttribute('position', new THREE.BufferAttribute(Float32Array.from(lineVerts), 3));
-		geometry.addAttribute('vertex_dist', new THREE.BufferAttribute(Float32Array.from(lineDists), 1));
+		geometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(lineVerts), 3));
+		geometry.setAttribute('vertex_dist', new THREE.BufferAttribute(Float32Array.from(lineDists), 1));
 
 		let line = new THREE.LineSegments(geometry, material);
 		this.el.object3D.add(line);
