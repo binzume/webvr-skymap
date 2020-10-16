@@ -19,6 +19,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		constellationSrc: { type: 'string', default: "" },
 		starNameSrc: { type: 'string', default: "" },
 		solarsystem: { type: 'boolean', default: true },
+		solarsystemScale: { default: -1 },
 		constellation: { type: 'boolean', default: false },
 		grid: { type: 'boolean', default: false }
 	},
@@ -169,11 +170,19 @@ AFRAME.registerComponent('celestial-sphere', {
 					.applyAxisAngle(axisY, o).applyAxisAngle(ov, l - o + md);
 				let rpos = pos.clone().sub(earthPos);
 
-				let au = rpos.length();
-				let tt = this.data.radius * (0.99 + Math.log(au) * 0.001);
-				let scale = Math.max(tt / au / 1.496e8 * 2, tt * 0.1 / 360 * Math.PI / params.size);
-				this.planets[p].scale.set(scale, scale, scale);
-				this.planets[p].position.copy(rpos).normalize().multiplyScalar(tt);
+				if (this.data.solarsystemScale > 0) {
+					let au = pos.length();
+					let tt = Math.log(au + 1) * this.data.solarsystemScale;
+					let scale = Math.log(params.size / 10000 + 1) * this.data.solarsystemScale * 0.1 / params.size;
+					this.planets[p].scale.set(scale, scale, scale);
+					this.planets[p].position.copy(pos).normalize().multiplyScalar(tt);
+				} else {
+					let au = rpos.length();
+					let tt = this.data.radius * (0.99 + Math.log(au) * 0.001);
+					let scale = Math.max(tt / au / 1.496e8 * 2, tt * 0.1 / 360 * Math.PI / params.size);
+					this.planets[p].scale.set(scale, scale, scale);
+					this.planets[p].position.copy(rpos).normalize().multiplyScalar(tt);
+				}
 			}
 		}
 
@@ -269,7 +278,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		let cursorObj = this.el.getObject3D('cursor');
 		if (cursorObj == null) {
 			cursorObj = new THREE.Group();
-			var geometry = new THREE.RingBufferGeometry(28, 32, 16);
+			var geometry = new THREE.RingBufferGeometry(36, 40, 16);
 			var material = new THREE.MeshBasicMaterial({ color: 0x888800, side: THREE.DoubleSide, fog: false });
 			let cursorMesh = new THREE.Mesh(geometry, material);
 			cursorMesh.position.set(0, 0, this.data.radius);

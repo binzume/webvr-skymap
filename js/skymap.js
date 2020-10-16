@@ -106,6 +106,26 @@ AFRAME.registerComponent('instantiate-on-click', {
 	}
 });
 
+AFRAME.registerComponent('sky-pointer', {
+	schema: {
+		event: { default: "gripdown" },
+		lineColor: { default: '#3060a0' }
+	},
+	init: function () {
+		let sphereEl = document.querySelector("[celestial-sphere]");
+		let component = 'celestial-cursor';
+		this.el.addEventListener(this.data.event, ev => {
+			let c = sphereEl.getAttribute(component);
+			if (!c || c.raycaster != this.el) {
+				sphereEl.setAttribute(component, { raycaster: this.el });
+				this.el.setAttribute('line', { color: '#3050b0' });
+			} else {
+				sphereEl.removeAttribute(component);
+				this.el.setAttribute('line', { color: this.data.lineColor });
+			}
+		});
+	}
+});
 
 AFRAME.registerComponent('position-controls', {
 	schema: {
@@ -179,19 +199,6 @@ AFRAME.registerComponent('position-controls', {
 			forward.normalize();
 			this.el.object3D.position.add(forward.multiplyScalar(-ev.deltaY * speedFactor));
 		});
-		this.changed = [];
-		this.el.addEventListener('gripdown', ev => {
-			document.querySelectorAll("[xy-drag-control]").forEach(el => {
-				this.changed.push([el, Object.assign({}, el.getAttribute('xy-drag-control'))]);
-				el.setAttribute("xy-drag-control", { mode: "pull", autoRotate: false });
-			});
-		});
-		this.el.addEventListener('gripup', ev => {
-			this.changed.forEach(([el, dragControl]) => {
-				el.setAttribute("xy-drag-control", { mode: dragControl.mode, autoRotate: dragControl.autoRotate });
-			});
-			this.changed = [];
-		});
 		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('thumbstickmoved', ev => {
 			let direction = ev.target.components.raycaster.raycaster.ray.direction;
 			if (this.data.axismove == "translation") {
@@ -224,7 +231,6 @@ AFRAME.registerComponent('fill-parent', {
 		resize(parentEl.components.xyrect);
 	}
 });
-
 
 
 AFRAME.registerShader('msdf2', {
@@ -316,61 +322,6 @@ AFRAME.registerComponent('atlas', {
 		this.el.setAttribute("material", "offset", { x: u, y: v });
 	},
 });
-
-AFRAME.registerShader('gridground', {
-	schema: {
-		color: { type: 'color', is: 'uniform', default: "#ffff00" }
-	},
-	init: function (data) {
-		this.attributes = this.initVariables(data, 'attribute');
-		this.uniforms = THREE.UniformsUtils.merge([this.initVariables(data, 'uniform'), THREE.UniformsLib.fog]);
-		this.material = new THREE.ShaderMaterial({
-			uniforms: this.uniforms,
-			vertexShader: this.vertexShader,
-			fragmentShader: this.fragmentShader,
-			fog: true,
-			blending: THREE.AdditiveBlending
-		});
-	},
-	vertexShader: `
-	varying vec2 vUv;
-	#include <common>
-	#include <color_pars_vertex>
-	#include <fog_pars_vertex>
-	#include <clipping_planes_pars_vertex>
-	#define DISTANCE
-	void main() {
-		#include <color_vertex>
-		#include <begin_vertex>
-		#include <project_vertex>
-		#include <worldpos_vertex>
-		#include <clipping_planes_vertex>
-		#include <fog_vertex>
-		vUv = worldPosition.xz;
-	}`,
-	fragmentShader: `
-	uniform vec3 diffuse;
-	uniform vec3 color;
-	uniform float opacity;
-	varying vec2 vUv;
-	#include <common>
-	#include <color_pars_fragment>
-	#include <fog_pars_fragment>
-	#include <clipping_planes_pars_fragment>
-	void main() {
-		#include <clipping_planes_fragment>
-		vec2 gpos = abs(mod(vUv * 0.5, 1.0) - vec2(0.5,0.5));
-		float l = max(pow(0.5, gpos.x * 400.0), pow(0.5, gpos.y * 400.0)) * pow(0.5, length(gpos) * 25.0);
-		if (l < 0.1) {
-			discard;
-		}
-		vec4 diffuseColor = vec4( color * l, 1.0 );
-		#include <color_fragment>
-		gl_FragColor = diffuseColor;
-		#include <fog_fragment>
-	}`
-});
-
 
 AFRAME.registerComponent('main-menu', {
 	schema: {
