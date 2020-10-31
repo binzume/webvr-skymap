@@ -13,14 +13,14 @@
 
 <body style="background-color: black; color:white;">
   <a-scene fog="type: linear; color: #000; near:10;far:50;" renderer="antialias:true;">
-    <a-entity  cursor="rayOrigin: mouse; fuse:false" raycaster="objects:.collidable"></a-entity>
+    <a-entity  cursor="rayOrigin: mouse; fuse:false" raycaster="far:Infinity;objects:.collidable"></a-entity>
     <a-sky class="collidable" instantiate-on-click="template:mainMenuTemplate;id:mainMenu;align:raycaster" radius="5000"></a-sky>
 
     <a-assets>
       <img id="menuicons" src="images/icons.png" />
       <!-- menu pane -->
       <script id="mainMenuTemplate" type="text/html">
-        <a-xywindow main-menu window-locator="applyCameraPos:false" scale='0.4 0.4 0.4' position="-1.5 1 -3" title="Menu" width="4.5" height="0.6" xycontainer="direction:column;spacing:0.05;alignItems:stretch">
+        <a-xywindow main-menu scale='0.4 0.4 0.4' position="-1.5 1 -3" title="Menu" width="4.5" height="0.6" xycontainer="direction:column;spacing:0.05;alignItems:stretch">
           <a-xycontainer height="0.6" direction="row" justify-items="stretch" spacing="0.05">
             <a-xybutton name="selector" width="1" height="0.6">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:0"></a-plane>
@@ -95,24 +95,22 @@
       </script>
     </a-assets>
 
-    <a-entity position="0 0 0" celestial-sphere="src:data/hip_stars.json?;starNameSrc:data/star_names.json;updateIntervalMs:100;speed:1;constellationSrc:data/hip_constellations.json?"></a-entity>
-
-    <a-entity id="camera-rig" position-controls="arrowkeys:rotation;axismove:rotation">
-      <a-camera position="0 1.5 0" look-controls="enabled:false" wasd-controls="enabled:false"></a-camera>
-      <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.collidable" line="color: #3060a0; opacity: 0.5" sky-pointer></a-entity>
-      <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.collidable" line="color: #3060a0; opacity: 0.5" sky-pointer></a-entity>
-      <!-- kbd -->
-      <a-entity position="0 0.8 -3">
-        <a-xykeyboard></a-xykeyboard>
-      </a-entity>
+    <a-entity id="env">
+      <a-entity celestial-sphere="src:data/hip_stars.json?;starNameSrc:data/star_names.json;updateIntervalMs:100;speed:1;constellationSrc:data/hip_constellations.json?"></a-entity>
+      <a-plane id='ground' wireframe='true' width='10' height='10' segments-height='10' segments-width='10' rotation='-90 0 0' color="#111144"></a-plane>
+      <a-xylabel value="S" width="0.6" height="1" wrap-count="1.5" position='0 0.01 -2' rotation='-90 0 180'  color="#444444"></a-xylabel>
+      <a-xylabel value="N" width="0.6" height="1" wrap-count="1.5" position='0 0.01 2' rotation='-90 0 0' color="#441111"></a-xylabel>
+      <a-xylabel value="W" width="0.6" height="1" wrap-count="1.5" position='-2 0.01 0' rotation='-90 0 90' color="#444444"></a-xylabel>
+      <a-xylabel value="E" width="0.6" height="1" wrap-count="1.5" position='2 0.01 0' rotation='-90 0 -90' color="#444444"></a-xylabel>
     </a-entity>
 
-    <a-plane id='ground' wireframe='true' width='10' height='10' segments-height='10' segments-width='10' rotation='-90 0 0' color="#111144">
-      <a-xylabel value="S" width="0.6" height="1" wrap-count="1.5" position='0 2 0.01' color="#444444"></a-xylabel>
-      <a-xylabel value="N" width="0.6" height="1" wrap-count="1.5" position='0 -2 0.01' rotation='0 0 180' color="#441111"></a-xylabel>
-      <a-xylabel value="W" width="0.6" height="1" wrap-count="1.5" position='2 0 0.01' rotation='0 0 -90' color="#444444"></a-xylabel>
-      <a-xylabel value="E" width="0.6" height="1" wrap-count="1.5" position='-2 0 0.01' rotation='0 0 90' color="#444444"></a-xylabel>
-    </a-plane>
+    <a-entity id="camera-rig" position-controls="arrowkeys:rotation;axismove:rotation" >
+      <a-camera position="0 1.5 0" wasd-controls="enabled:false"></a-camera>
+      <a-entity laser-controls="hand: right" raycaster="far:Infinity;objects:.collidable" line="color: #3060a0; opacity: 0.5" sky-pointer></a-entity>
+      <a-entity laser-controls="hand: left" raycaster="far:Infinity;objects:.collidable" line="color: #3060a0; opacity: 0.5" sky-pointer></a-entity>
+      <a-xykeyboard scale="0.3 0.3 0.3" position="0 1 -1" rotation="-30 0 0"></a-xykeyboard>
+    </a-entity>
+
   </a-scene>
 
   <div style="position:absolute;top:10pt;right:10pt;width:60pt;background-color:white;border-radius:4pt;text-align:center;">

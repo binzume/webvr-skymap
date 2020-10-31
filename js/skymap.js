@@ -2,107 +2,47 @@
 
 async function instantiate(id, parent) {
 	let template = document.getElementById(id);
-	let base = location.href;
-	if (template.dataset.location) {
-		base = new URL(template.dataset.location, base);
-		let loader = document.querySelector('a-assets').fileLoader;
-		let response = await new Promise((resolve, reject) => loader.load(template.dataset.location, resolve, null, reject));
-		let doc = new DOMParser().parseFromString(response, 'text/html');
-		template = doc.getElementById(id);
-	}
 	let wrapper = document.createElement('div');
 	wrapper.innerHTML = template.innerHTML;
 	var el = wrapper.firstElementChild;
-
-	let mod = template.dataset.import;
-	if (mod) {
-		await import(new URL(mod, base));
-	}
 	(parent || document.querySelector('a-scene')).appendChild(el);
 	return el;
 }
 
-AFRAME.registerComponent('window-locator', {
-	schema: {
-		applyCameraPos: { default: true },
-		updateRotation: { default: true },
-		interval: { default: 0.25 },
-		groundLevel: { default: 0 }
-	},
-	init() {
-		this.el.sceneEl.addEventListener('enter-vr', ev => {
-			this.updateRotation();
-		});
-		this.el.sceneEl.addEventListener('exit-vr', ev => {
-			let q = this.el.sceneEl.camera.getWorldQuaternion(new THREE.Quaternion());
-			this.el.object3D.setRotationFromQuaternion(q);
-		});
-	},
-	update(oldData) {
-		let el = this.el;
-		let windows = el.sceneEl.systems.xywindow.windows;
-		if (el.sceneEl.is('vr-mode') && this.data.updateRotation) {
-			this.updateRotation();
-		}
-
-		let pos = new THREE.Vector3().add(el.getAttribute('position'));
-		if (!oldData.applyCameraPos && this.data.applyCameraPos) {
-			pos.add(el.sceneEl.camera.getWorldPosition(new THREE.Vector3()));
-			if (this.el.components.xyrect) {
-				pos.y = Math.max(pos.y, this.data.groundLevel + this.el.components.xyrect.height / 2);
-			}
-		}
-
-		let dd = this.data.interval;
-		let d = el.object3D.getWorldDirection(new THREE.Vector3()).multiplyScalar(dd);
-		for (let i = 0; i < 16; i++) {
-			if (windows.every(window => window.el == el || window.el.object3D.position.distanceToSquared(pos) > dd * dd)) {
-				break;
-			}
-			pos.add(d);
-		}
-		el.setAttribute('position', pos);
-	},
-	updateRotation() {
-		let tr = new THREE.Matrix4();
-		let cameraPosition = this.el.sceneEl.camera.getWorldPosition(new THREE.Vector3());
-		let targetPosition = this.el.object3D.getWorldPosition(new THREE.Vector3());
-		tr.lookAt(cameraPosition, targetPosition, new THREE.Vector3(0, 1, 0));
-		let q = new THREE.Quaternion().setFromRotationMatrix(tr);
-		this.el.object3D.setRotationFromQuaternion(q);
-	}
-});
-
 AFRAME.registerComponent('instantiate-on-click', {
 	schema: {
 		template: { type: 'string', default: '' },
-		id: { type: 'string', default: '' },
-		align: { type: 'string', default: '' }
+		id: { type: 'string', default: '' }
 	},
 	init() {
 		this.el.addEventListener('click', async (ev) => {
 			if (this.data.id && document.getElementById(this.data.id)) {
+				this._updateRotation(document.getElementById(this.data.id));
 				return;
 			}
 			let el = await instantiate(this.data.template);
 			if (this.data.id) {
 				el.id = this.data.id;
 			}
-			if (this.data.align == 'raycaster') {
-				if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
-					return;
-				}
-				var raycaster = ev.detail.cursorEl.components.raycaster.raycaster;
-				var rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
-				var origin = raycaster.ray.origin;
-
-				el.addEventListener('loaded', (ev) => {
-					let pos = new THREE.Vector3(0, 0, el.getAttribute('position').z).applyQuaternion(rot);
-					el.setAttribute('position', pos.add(origin));
-					el.components['window-locator'] && el.components['window-locator'].updateRotation();
-				}, { once: true });
+			if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
+				return;
 			}
+			var raycaster = ev.detail.cursorEl.components.raycaster.raycaster;
+			var rot = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, -1), raycaster.ray.direction);
+			var origin = raycaster.ray.origin;
+
+			el.addEventListener('loaded', (ev) => {
+				let pos = new THREE.Vector3(0, 0, el.getAttribute('position').z).applyQuaternion(rot);
+				el.setAttribute('position', pos.add(origin));
+				this._updateRotation(el);
+			}, { once: true });
 		});
+	},
+	_updateRotation(el) {
+		let cameraPosition = el.sceneEl.camera.getWorldPosition(new THREE.Vector3());
+		let targetPosition = el.object3D.getWorldPosition(new THREE.Vector3());
+		let tr = new THREE.Matrix4().lookAt(cameraPosition, targetPosition, new THREE.Vector3(0, 1, 0));
+		el.object3D.setRotationFromMatrix(tr);
 	}
 });
 
@@ -137,6 +77,7 @@ AFRAME.registerComponent('position-controls', {
 	},
 	init: function () {
 		let data = this.data;
+		let el = this.el;
 		if (data.arrowkeys || data.wasdkeys) {
 			let fns = {
 				rotation: [
@@ -191,27 +132,19 @@ AFRAME.registerComponent('position-controls', {
 				}
 			});
 		}
-		document.addEventListener('wheel', ev => {
-			let speedFactor = 0.01;
-			var camera = this.el.sceneEl.camera;
-			var forward = camera.getWorldDirection(new THREE.Vector3());
-			forward.y = 0;
-			forward.normalize();
-			this.el.object3D.position.add(forward.multiplyScalar(-ev.deltaY * speedFactor));
-		});
-		this.el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('thumbstickmoved', ev => {
+		el.querySelectorAll('[laser-controls]').forEach(el => el.addEventListener('thumbstickmoved', ev => {
 			let direction = ev.target.components.raycaster.raycaster.ray.direction;
 			if (this.data.axismove == "translation") {
 				let rot = Math.atan2(direction.x, direction.z);
 				let v = new THREE.Vector3(-ev.detail.x, 0, -ev.detail.y).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
-				this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
+				el.object3D.position.add(v.multiplyScalar(this.data.speed));
 			} else if (this.data.axismove == "rotation") {
-				this.el.object3D.rotateY(-(ev.detail.x) * this.data.rotationSpeed * 0.1);
+				el.object3D.rotateY(-(ev.detail.x) * this.data.rotationSpeed * 0.1);
 			} else {
 				let rot = Math.atan2(direction.x, direction.z);
 				let v = new THREE.Vector3(0, 0, -ev.detail.y).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
-				this.el.object3D.position.add(v.multiplyScalar(this.data.speed));
-				this.el.object3D.rotateY(-ev.detail.x * this.data.rotationSpeed * 0.1);
+				el.object3D.position.add(v.multiplyScalar(this.data.speed));
+				el.object3D.rotateY(-ev.detail.x * this.data.rotationSpeed * 0.1);
 			}
 		}));
 	}
