@@ -328,7 +328,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		let eps = this._calc4(this.oe.earth.eps, T) * degToRad / 3600;
 		let psi = this._calc4(this.oe.earth.psi, T) * degToRad / 3600;
 
-		let geometry = new THREE.Geometry();
+		let geometry = { vertices: [], colors: [] };
 		const axisY = new THREE.Vector3(0, 1, 0);
 		const axisZ = new THREE.Vector3(0, 0, 1);
 		let oev = new THREE.Vector3(0, 1, 0).applyAxisAngle(axisZ.clone().applyAxisAngle(axisY, -psi), eps);
@@ -365,7 +365,13 @@ AFRAME.registerComponent('celestial-sphere', {
 			vertexColors: THREE.VertexColors, fog: false, depthWrite: false, sizeAttenuation: false,
 			blending: THREE.CustomBlending, blendEquation: THREE.MaxEquation
 		});
-		let points = new THREE.Points(geometry, mat);
+		let geom = new THREE.BufferGeometry();
+		let positionAttr = new THREE.BufferAttribute(new Float32Array(geometry.vertices.length * 3), 3).copyVector3sArray(geometry.vertices);
+		geom.setAttribute('position', positionAttr);
+		let colorAttr = new THREE.BufferAttribute(new Float32Array(geometry.colors.length * 3), 3).copyColorsArray(geometry.colors);
+		geom.setAttribute('color', colorAttr);
+
+		let points = new THREE.Points(geom, mat);
 		this.el.object3D.add(points);
 		this.gridPoints = points;
 		this.gridPoints.visible = this.data.grid;
