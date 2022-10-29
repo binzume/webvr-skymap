@@ -187,7 +187,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 
 		let er = d + (time % 86400 / 86400 + this.data.lng / 360) * 2 * Math.PI;
-		this.el.object3D.rotation.set(THREE.Math.degToRad(90 - this.data.lat), -er, 0);
+		this.el.object3D.rotation.set(THREE.MathUtils.degToRad(90 - this.data.lat), -er, 0);
 		if (this.data.grid) {
 			if (Math.abs(this.gridLastUpdated - time) > 3600) {
 				this.gridLastUpdated = time;
@@ -248,7 +248,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 		let star = null, max = r;
 		let q = (this.el.getObject3D('mesh') || this.el.object3D).getWorldQuaternion(new THREE.Quaternion());
-		let d = direction.clone().applyQuaternion(q.inverse());
+		let d = direction.clone().applyQuaternion(q.invert());
 		// TODO: BSP-tree
 		for (let sn of this._starNames) {
 			if (!sn.direction) continue;
@@ -260,7 +260,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		}
 		if (this.solarSystem && this.solarSystem.visible) {
 			let q = this.solarSystem.getWorldQuaternion(new THREE.Quaternion());
-			let d = direction.clone().applyQuaternion(q.clone().inverse());
+			let d = direction.clone().applyQuaternion(q.clone().invert());
 			for (let i = 0; i < this.oe.planets.length; i++) {
 				let pd = this.planets[i].position.clone().normalize();
 				let dd = pd.dot(d);
@@ -286,7 +286,7 @@ AFRAME.registerComponent('celestial-sphere', {
 			this.el.setObject3D('cursor', cursorObj);
 		}
 		cursorObj.quaternion.set(0, 0, 0, 1);
-		cursorObj.rotateY(THREE.Math.degToRad(ra)).rotateX(THREE.Math.degToRad(-dec));
+		cursorObj.rotateY(THREE.MathUtils.degToRad(ra)).rotateX(THREE.MathUtils.degToRad(-dec));
 		if (this.el.getObject3D('mesh')) {
 			cursorObj.quaternion.premultiply(this.el.getObject3D('mesh').quaternion);
 		}
@@ -310,7 +310,7 @@ AFRAME.registerComponent('celestial-sphere', {
 	},
 	getCoord: function (direction) {
 		let q = (this.el.getObject3D('mesh') || this.el.object3D).getWorldQuaternion(new THREE.Quaternion());
-		let d = direction.clone().applyQuaternion(q.inverse());
+		let d = direction.clone().applyQuaternion(q.invert());
 		let l = Math.sqrt(d.x * d.x + d.z * d.z);
 		return [(Math.atan2(d.x, d.z) * 180 / Math.PI + 360) % 360, Math.atan2(d.y, l) * 180 / Math.PI];
 	},
@@ -320,7 +320,7 @@ AFRAME.registerComponent('celestial-sphere', {
 	_calc2: function (param, t) {
 		return param[0] + param[1] * t;
 	},
-	_makeGrid: function (d, T) {
+	_makeGrid(d, T) {
 		if (this.gridPoints) {
 			this.el.object3D.remove(this.gridPoints);
 		}
@@ -362,19 +362,24 @@ AFRAME.registerComponent('celestial-sphere', {
 		*/
 
 		let mat = new THREE.PointsMaterial({
-			vertexColors: THREE.VertexColors, fog: false, depthWrite: false, sizeAttenuation: false,
+			vertexColors: 2, fog: false, depthWrite: false, sizeAttenuation: false,
 			blending: THREE.CustomBlending, blendEquation: THREE.MaxEquation
 		});
 		let geom = new THREE.BufferGeometry();
-		let positionAttr = new THREE.BufferAttribute(new Float32Array(geometry.vertices.length * 3), 3).copyVector3sArray(geometry.vertices);
+		let positionAttr = new THREE.BufferAttribute(this._toArray(geometry.vertices), 3);
 		geom.setAttribute('position', positionAttr);
-		let colorAttr = new THREE.BufferAttribute(new Float32Array(geometry.colors.length * 3), 3).copyColorsArray(geometry.colors);
+		let colorAttr = new THREE.BufferAttribute(this._toArray(geometry.colors), 3);
 		geom.setAttribute('color', colorAttr);
 
 		let points = new THREE.Points(geom, mat);
 		this.el.object3D.add(points);
 		this.gridPoints = points;
 		this.gridPoints.visible = this.data.grid;
+	},
+	_toArray(src) {
+		let fa = new Float32Array(src.length * 3);
+		src.forEach((v, i) => v.toArray(fa, i * 3));
+		return fa;
 	},
 	_makeSolarSystem: function () {
 		this.solarSystem = new THREE.Group();
@@ -437,7 +442,7 @@ AFRAME.registerComponent('celestial-sphere', {
 		this.solarSystem.add(moon);
 		this.moon = moon;
 	},
-	_loadStars: async function (src) {
+	async _loadStars(src) {
 		let response = await fetch(src);
 		let result = await response.json();
 		const axisY = new THREE.Vector3(0, 1, 0);
@@ -499,7 +504,7 @@ AFRAME.registerComponent('celestial-sphere', {
 				outgoingLight *= pow(0.5, length(gl_PointCoord - vec2(0.5, 0.5)) * 10.0 - 0.3);
 				gl_FragColor = vec4( outgoingLight, diffuseColor.a );
 			}`,
-			vertexColors: THREE.VertexColors,
+			vertexColors: 2, // THREE.VertexColors, TODO: set to true.
 			depthWrite: false,
 			fog: false,
 			blending: THREE.AdditiveBlending
@@ -509,9 +514,9 @@ AFRAME.registerComponent('celestial-sphere', {
 
 
 		let geometry = new THREE.BufferGeometry();
-		let positionAttr = new THREE.BufferAttribute(new Float32Array(vertices.length * 3), 3).copyVector3sArray(vertices);
+		let positionAttr = new THREE.BufferAttribute(this._toArray(vertices), 3);
 		geometry.setAttribute('position', positionAttr);
-		let colorAttr = new THREE.BufferAttribute(new Float32Array(colors.length * 3), 3).copyColorsArray(colors);
+		let colorAttr = new THREE.BufferAttribute(this._toArray(colors), 3);
 		geometry.setAttribute('color', colorAttr);
 		let sizeAttr = new THREE.BufferAttribute(Float32Array.from(sizes), 1);
 		geometry.setAttribute('size', sizeAttr);
@@ -533,8 +538,8 @@ AFRAME.registerComponent('celestial-sphere', {
 			let s = pointMap[sn.id];
 			if (s != null) {
 				sn.direction = vertices[s].clone().normalize();
-				sn.ra = THREE.Math.radToDeg(result[s].ra);
-				sn.dec = THREE.Math.radToDeg(result[s].dec);
+				sn.ra = THREE.MathUtils.radToDeg(result[s].ra);
+				sn.dec = THREE.MathUtils.radToDeg(result[s].dec);
 			}
 		}
 	},
