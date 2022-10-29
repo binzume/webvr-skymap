@@ -34,7 +34,7 @@
             <a-xybutton name="drawsol" width="1.2" height="0.6">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:3"></a-plane>
             </a-xybutton>
-            <a-xybutton name="openConfigButton" width="1" height="0.6">
+            <a-xybutton name="openConfigButton" width="1" height="0.6" instantiate-on-click="template:configDialogTemplate;id:configDialog;align:raycaster;parent:#mainMenu">
               <a-plane width="0.5" height="0.5" position="0 0 0.02" atlas="src:#menuicons; cols:2; rows: 4; index:4"></a-plane>
             </a-xybutton>
             <a-xybutton name="exitVRButton" width="1" height="0.6">
@@ -70,7 +70,7 @@
       </script>
       <!-- config dialog -->
       <script id="configDialogTemplate" type="text/html">
-        <a-xycontainer config-dialog position="4 -2 0.05" direction="column" spacing="0.05" padding="0.2">
+        <a-xycontainer config-dialog position="4 -1 0.05" direction="column" spacing="0.05" padding="0.2" xyitem="fixed:true">
           <a-entity fill-parent position="0 0 -0.05" geometry="primitive:xy-rounded-rect;width:1;height:1" material="color:#444"></a-entity>
           <a-xycontainer width="2.5" direction="row">
             <a-text width="0.8" height="0.3" anchor="center" wrap-count=6 value="Lat:"></a-text>

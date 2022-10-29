@@ -1,30 +1,29 @@
 "use strict";
 
-async function instantiate(id, parent) {
-	let template = document.getElementById(id);
-	let wrapper = document.createElement('div');
-	wrapper.innerHTML = template.innerHTML;
-	var el = wrapper.firstElementChild;
-	(parent || document.querySelector('a-scene')).appendChild(el);
-	return el;
-}
-
 AFRAME.registerComponent('instantiate-on-click', {
 	schema: {
-		template: { type: 'string', default: '' },
-		id: { type: 'string', default: '' }
+		template: { default: '' },
+		id: { default: '' },
+		event: { default: 'click' },
+		parent: { default: '' },
 	},
 	init() {
-		this.el.addEventListener('click', async (ev) => {
+		this.el.addEventListener(this.data.event, async (ev) => {
+			let parent = this.data.parent ? document.querySelector(this.data.parent) : null;
 			if (this.data.id && document.getElementById(this.data.id)) {
-				this._updateRotation(document.getElementById(this.data.id));
+				if (!parent) {
+					this._updateRotation(document.getElementById(this.data.id));
+				}
 				return;
 			}
-			let el = await instantiate(this.data.template);
+			let el = await this.instantiate(document.getElementById(this.data.template), parent);
 			if (this.data.id) {
 				el.id = this.data.id;
 			}
 			if (!ev.detail.cursorEl || !ev.detail.cursorEl.components.raycaster) {
+				return;
+			}
+			if (parent) {
 				return;
 			}
 			var raycaster = ev.detail.cursorEl.components.raycaster.raycaster;
@@ -32,16 +31,27 @@ AFRAME.registerComponent('instantiate-on-click', {
 			var origin = raycaster.ray.origin;
 
 			el.addEventListener('loaded', (ev) => {
+				// @ts-ignore
 				let pos = new THREE.Vector3(0, 0, el.getAttribute('position').z).applyQuaternion(rot);
+				// @ts-ignore
 				el.setAttribute('position', pos.add(origin));
 				this._updateRotation(el);
 			}, { once: true });
 		});
 	},
+	async instantiate(template, parent = null) {
+		let wrapper = document.createElement('div');
+		wrapper.innerHTML = ['SCRIPT', 'TEMPLATE'].includes(template.tagName) ? template.innerHTML : template.outerHTML;
+		let el = wrapper.firstElementChild;
+		(parent || this.el.sceneEl).appendChild(el);
+		return el;
+	},
 	_updateRotation(el) {
-		let cameraPosition = el.sceneEl.camera.getWorldPosition(new THREE.Vector3());
+		let camPos = new THREE.Vector3();
+		let camRot = new THREE.Quaternion();
+		this.el.sceneEl.camera.matrixWorld.decompose(camPos, camRot, new THREE.Vector3());
 		let targetPosition = el.object3D.getWorldPosition(new THREE.Vector3());
-		let tr = new THREE.Matrix4().lookAt(cameraPosition, targetPosition, new THREE.Vector3(0, 1, 0));
+		let tr = new THREE.Matrix4().lookAt(camPos, targetPosition, new THREE.Vector3(0, 1, 0));
 		el.object3D.setRotationFromMatrix(tr);
 	}
 });
@@ -51,7 +61,7 @@ AFRAME.registerComponent('sky-pointer', {
 		event: { default: "gripdown" },
 		lineColor: { default: '#3060a0' }
 	},
-	init: function () {
+	init() {
 		let sphereEl = document.querySelector("[celestial-sphere]");
 		let component = 'celestial-cursor';
 		this.el.addEventListener(this.data.event, ev => {
@@ -75,7 +85,7 @@ AFRAME.registerComponent('position-controls', {
 		speed: { default: 0.1 },
 		rotationSpeed: { default: 0.1 }
 	},
-	init: function () {
+	init() {
 		let data = this.data;
 		let el = this.el;
 		if (data.arrowkeys || data.wasdkeys) {
@@ -175,7 +185,7 @@ AFRAME.registerShader('msdf2', {
 		repeat: { type: 'vec2', is: 'uniform', default: { x: 1, y: 1 } },
 		msdfUnit: { type: 'vec2', is: 'uniform', default: { x: 0.1, y: 0.1 } },
 	},
-	init: function (data) {
+	init(data) {
 		this.attributes = this.initVariables(data, 'attribute');
 		this.uniforms = THREE.UniformsUtils.merge([this.initVariables(data, 'uniform'), THREE.UniformsLib.fog]);
 		this.material = new THREE.ShaderMaterial({
@@ -259,17 +269,9 @@ AFRAME.registerComponent('atlas', {
 AFRAME.registerComponent('main-menu', {
 	schema: {
 	},
-	init: function () {
-		this.configDialog = null;
+	init() {
 		let sphereEl = document.querySelector("[celestial-sphere]");
 		this.timer = setInterval(() => this._refreshTime(), 1000);
-		this._getEl('openConfigButton').addEventListener('click', async (e) => {
-			if (!this.configDialog) {
-				this.configDialog = await instantiate("configDialogTemplate", this.el);
-			} else {
-				this.configDialog.components["config-dialog"].showDialog();
-			}
-		});
 		this._getEl('exitVRButton').addEventListener('click', (e) => {
 			document.querySelector('a-scene').exitVR();
 		});
@@ -342,7 +344,7 @@ AFRAME.registerComponent('main-menu', {
 			this._getEl('selector').querySelector("a-plane").setAttribute("material", "diffuse", v ? 0x44aaff : 0xffffff);
 		});
 	},
-	remove: function () {
+	remove() {
 		clearInterval(this.timer);
 	},
 	_modifyTime(sphereEl, f) {
@@ -367,7 +369,7 @@ AFRAME.registerComponent('celestial-cursor', {
 	schema: {
 		raycaster: { type: 'selector', default: "[raycaster]" }
 	},
-	init: function () {
+	init() {
 		let sphereEl = document.querySelector('[celestial-sphere]');
 		this.sphere = sphereEl.components['celestial-sphere'];
 		this.orgconstellation = this.sphere.data.constellation;
@@ -386,7 +388,7 @@ AFRAME.registerComponent('celestial-cursor', {
 		sphereEl.setAttribute('celestial-sphere', 'constellation', true);
 		this.selected = null;
 	},
-	tick: function () {
+	tick() {
 		let raycaster = this.data.raycaster.components.raycaster.raycaster;
 		let coord = this.sphere.getCoord(raycaster.ray.direction);
 		let starData = this.sphere.findStar(raycaster.ray.direction, 0.9998);
@@ -421,9 +423,10 @@ AFRAME.registerComponent('celestial-cursor', {
 		this.balloonEl.object3D.position.copy(ray.origin.clone().add(ray.direction.clone().multiplyScalar(10)));
 		this.balloonEl.object3D.lookAt(ray.origin);
 	},
-	remove: function () {
+	remove() {
 		this.el.sceneEl.removeChild(this.balloonEl);
 		this.sphere.selectConstellation(null);
+		this.sphere.clearCursor();
 		this.sphere.el.setAttribute('celestial-sphere', 'constellation', this.orgconstellation);
 	}
 });
@@ -432,7 +435,7 @@ AFRAME.registerComponent('celestial-cursor', {
 AFRAME.registerComponent('config-dialog', {
 	schema: {
 	},
-	init: function () {
+	init() {
 		this.latEl = this._getEl('lat');
 		this.lngEl = this._getEl('lng');
 		this.speedEl = this._getEl('speed');
@@ -440,13 +443,13 @@ AFRAME.registerComponent('config-dialog', {
 		this.targetEl = document.querySelector("[celestial-sphere]");
 
 		this._getEl('apply').addEventListener('click', (e) => {
-			this.el.setAttribute("visible", false);
 			let tt = this.timeEl.value.split(/[: /-]+/).map(a => a * 1);
 			let t = new Date(tt[0], tt[1] - 1, tt[2], tt[3] || 0, tt[4] || 0, tt[5] || 0);
 			this.targetEl.setAttribute("celestial-sphere", {
 				lat: this.latEl.value * 1.0, lng: this.lngEl.value * 1.0,
 				timeMs: t.getTime(), speed: this.speedEl.value * 1.0
 			});
+			this.el.parentElement.removeChild(this.el);
 		});
 		this._getEl('gps').addEventListener('click', (e) => {
 			this.getCurrentLocation();
@@ -458,9 +461,9 @@ AFRAME.registerComponent('config-dialog', {
 		magOffset.setAttribute("value", this.targetEl.getAttribute("celestial-sphere").magOffset);
 		this.showDialog();
 	},
-	remove: function () {
+	remove() {
 	},
-	showDialog: function () {
+	showDialog() {
 		var attrs = this.targetEl.getAttribute("celestial-sphere");
 		this.latEl.value = attrs.lat;
 		this.lngEl.value = attrs.lng;
@@ -469,12 +472,11 @@ AFRAME.registerComponent('config-dialog', {
 		let d2 = n => ("0" + n).substr(-2);
 		this.timeEl.value = [t.getFullYear(), d2(t.getMonth() + 1), d2(t.getDate())].join("-") + " " +
 			[d2(t.getHours()), d2(t.getMinutes()), d2(t.getSeconds())].join(":");
-		this.el.setAttribute("visible", true);
 	},
-	_getEl: function (name) {
+	_getEl(name) {
 		return this.el.querySelector("[name=" + name + "]");
 	},
-	getCurrentLocation: function () {
+	getCurrentLocation() {
 		if (!navigator.geolocation) {
 			console.log("geolocation unsupported");
 			return;
@@ -490,6 +492,16 @@ AFRAME.registerComponent('config-dialog', {
 		});
 	}
 });
+
+
+async function instantiate(id, parent) {
+	let template = document.getElementById(id);
+	let wrapper = document.createElement('div');
+	wrapper.innerHTML = ['SCRIPT', 'TEMPLATE'].includes(template.tagName) ? template.innerHTML : template.outerHTML;
+	var el = wrapper.firstElementChild;
+	(parent || document.querySelector('a-scene')).appendChild(el);
+	return el;
+}
 
 window.addEventListener('DOMContentLoaded', async (ev) => {
 	(await instantiate('mainMenuTemplate')).id = "mainMenu";
