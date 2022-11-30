@@ -109,6 +109,7 @@ AFRAME.registerComponent('celestial-sphere', {
 				this.currentTimeMs = baseTime + (Date.now() - startTime) * this.data.speed;
 				this.el.setAttribute("celestial-sphere", { timeMs: this.currentTimeMs, realtime: false })
 			}, this.data.updateIntervalMs);
+			this.el.emit('updatetimer', { interval: this.data.updateIntervalMs, speed: this.data.speed, time: this.data.timeMs, startTime: startTime }, false);
 		}
 
 		const axisY = new THREE.Vector3(0, 1, 0);
@@ -638,5 +639,156 @@ AFRAME.registerComponent('celestial-sphere', {
 		bounds.visible = false;
 		this.constellationLines.add(bounds);
 		this.constellationBounds = bounds;
+	}
+});
+
+class RemotePointer {
+	constructor(id, sphereEl) {
+		this.id = id;
+		this.sphereEl = sphereEl;
+		this.lastPos = new THREE.Vector2();
+		this.lastT = 0;
+		this.newPos = new THREE.Vector2();
+		this.newT = 0;
+
+		let cursorObj = new THREE.Group();
+		var geometry = new THREE.RingBufferGeometry(36, 40, 16);
+		var material = new THREE.MeshBasicMaterial({ color: 0xaa2200, side: THREE.DoubleSide, fog: false });
+		let cursorMesh = new THREE.Mesh(geometry, material);
+		cursorMesh.position.set(0, 0, this.sphereEl.components['celestial-sphere'].data.radius *  0.9999);
+
+		cursorObj.add(cursorMesh);
+		this.sphereEl.setObject3D('cursor' + id, cursorObj);
+		this.cursorObj = cursorObj;
+	}
+	update(msg) {
+		this.lastPos.copy(this.newPos);
+		this.lastT = this.newT;
+		this.newPos.set(msg.data.ra, msg.data.dec);
+		this.newT = Date.now();
+		if (this.lastPos.x - this.newPos.x > 180) {
+			this.lastPos.x -= 360;
+		}
+		if (this.lastPos.x - this.newPos.x < -180) {
+			this.lastPos.x += 360;
+		}
+	}
+	tick(now) {
+		let elapsed = now - this.newT;
+		let d = this.newT - this.lastT;
+		if (d <= 0 || d > 1000) {
+			this.updateCursor(this.newPos.x, this.newPos.y);
+			return;
+		}
+		let p = this.lastPos.clone().lerp(this.newPos, THREE.MathUtils.clamp(elapsed / d, 0, 1));
+		this.updateCursor(p.x, p.y);
+	}
+	updateCursor(ra, dec) {
+		this.cursorObj.quaternion.set(0, 0, 0, 1);
+		this.cursorObj.rotateY(THREE.MathUtils.degToRad(ra)).rotateX(THREE.MathUtils.degToRad(-dec));
+		let sphereMesh = this.sphereEl.getObject3D('mesh');
+		if (sphereMesh) {
+			this.cursorObj.quaternion.premultiply(sphereMesh.quaternion);
+		}
+	}
+	dispose() {
+		this.sphereEl.removeObject3D('cursor' + this.id);
+	}
+}
+
+
+AFRAME.registerComponent('pointer-renderer', {
+	schema: {
+		socket: {default: ''},
+		timeout: {default: 5000},
+	},
+	/** @type {Record<number, RemotePointer>} */
+	pointers: null,
+	/** @type {WebSocket} */
+	soc: null,
+	/** @type {THREE.Vector2} */
+	lastPos: null,
+	lastT: 0,
+	/** @type {THREE.Vector2} */
+	newPos: null,
+	newT: 0,
+	init() {
+		this.pointers = {};
+		this.lastPos = new THREE.Vector2();
+		this.newPos = new THREE.Vector2();
+		let sphereEl = this.el.sceneEl.querySelector('[celestial-sphere]');
+		this.sphere = sphereEl.components['celestial-sphere'];
+		this.soc = new WebSocket(this.data.socket);
+
+		this.soc.onmessage = (ev) => {
+			let msg = JSON.parse(ev.data);
+			if (msg.type == 'event' && msg.data.target == 'cursor') {
+				if (msg.sender && !this.pointers[msg.sender]) {
+					this.pointers[msg.sender] = new RemotePointer(msg.sender, sphereEl);
+				}
+				this.pointers[msg.sender]?.update(msg);
+			} else if (msg.type == 'event' && msg.data.target == 'timer') { // TODO: type:state
+				this.sphere.updating = true;
+				setTimeout(()=> this.sphere.updating = false, 0);
+				msg.data.time && sphereEl.setAttribute('celestial-sphere', {timeMs: msg.data.time});
+				msg.data.speed && sphereEl.setAttribute('celestial-sphere',{speed: msg.data.speed});
+				msg.data.interval && sphereEl.setAttribute('celestial-sphere', { updateIntervalMs: msg.data.interval });
+			}
+			this.play();
+		}
+	},
+	tick() {
+		let now = Date.now();
+		for (let p of Object.values(this.pointers)) {
+			let elapsed = now - p.newT;
+			if (elapsed > this.data.timeout) {
+				p.dispose();
+				delete this.pointers[p.id];
+			} else {
+				p.tick(now);
+			}
+		}
+	},
+	remove() {
+		for (let p of Object.values(this.pointers)) {
+			p.dispose();
+			delete this.pointers[p.id];
+		}
+	}
+});
+
+AFRAME.registerComponent('pointer-sender', {
+	schema: {
+		raycaster: { type: 'selector', default: "[raycaster]" },
+		socket: {default: ''},
+	},
+	/** @type {WebSocket} */
+	soc: null,
+	t: 0,
+	init() {
+		let sphereEl = this.el.sceneEl.querySelector('[celestial-sphere]');
+		this.sphere = sphereEl.components['celestial-sphere'];
+		this.soc = new WebSocket(this.data.socket);
+		sphereEl.addEventListener('updatetimer', (ev) => {
+			if (this.sphere.updating) {
+				return;
+			}
+			this.soc.send(JSON.stringify({ action: 'send', data: Object.assign({ target: 'timer', t: Date.now() }, ev.detail) }));
+		});
+	},
+	tick() {
+		let raycaster = this.data.raycaster.components.raycaster.raycaster;
+		let coord = this.sphere.getCoord(raycaster.ray.direction);
+		let starData = this.sphere.findStar(raycaster.ray.direction, 0.9998);
+		if (starData) {
+			coord = [starData.ra, starData.dec];
+		}
+		if (this.soc.readyState == 1 && this.t++ % 4 == 0) {
+			let cursor = { target: 'cursor', ra: coord[0], dec: coord[1], t: Date.now() };
+			this.soc.send(JSON.stringify({ action: 'send', data: cursor }));
+		}
+	},
+	remove() {
+		this.soc.close();
 	}
 });
