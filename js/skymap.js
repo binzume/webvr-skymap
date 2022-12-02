@@ -454,6 +454,21 @@ AFRAME.registerComponent('config-dialog', {
 		this._getEl('gps').addEventListener('click', (e) => {
 			this.getCurrentLocation();
 		});
+		this._getEl('roomJoin').addEventListener('click', (ev) => {
+			let component = 'pointer-sender';
+			let ws = 'wss://labs.binzume.net/topic/' + this._getEl('roomName').value + '/';
+			let v = !this.targetEl.hasAttribute(component);
+			if (v) {
+				this._getEl('roomJoin').setAttribute('label', 'Leave');
+				this.targetEl.setAttribute(component, { raycaster: ev.detail.cursorEl, socket: ws + 'publish' });
+				this.targetEl.setAttribute('pointer-renderer', { socket: ws + 'subscribe' });
+			} else {
+				this._getEl('roomJoin').setAttribute('label', 'Join');
+				this.targetEl.removeAttribute(component);
+				this.targetEl.removeAttribute('pointer-renderer');
+			}
+		});
+		
 		let magOffset = this._getEl('magOffset');
 		magOffset.addEventListener('change', (ev) => {
 			this.targetEl.setAttribute("celestial-sphere", "magOffset", ev.detail.value);
