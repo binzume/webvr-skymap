@@ -5,14 +5,14 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>WebVR SkyMap</title>
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://aframe.io/releases/1.4.1/aframe.min.js"></script>
   <script src="https://binzume.github.io/aframe-xylayout/dist/xylayout-all.min.js"></script>
   <script src="js/celestial-sphere.js?"></script>
   <script src="js/skymap.js?"></script>
 </head>
 
 <body style="background-color: black; color:white;">
-  <a-scene fog="type: linear; color: #000; near:10;far:50;" renderer="antialias:true;">
+  <a-scene fog="type: linear; color: #000; near:10;far:50;" renderer="antialias:true;highRefreshRate:true;foveationLevel:0">
     <a-entity  cursor="rayOrigin: mouse; fuse:false" raycaster="far:Infinity;objects:.collidable"></a-entity>
     <a-sky class="collidable" instantiate-on-click="template:mainMenuTemplate;id:mainMenu;align:raycaster" radius="5000"></a-sky>
 
